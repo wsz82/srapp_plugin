@@ -1,0 +1,10 @@
+[general]
+name=SRApp
+description=Synchronizacja z bazą danych aplikacji Metryka
+about=Twórz nowe projekty dla użytkowników aplikacji mobilnej Metryka, ładuj dane oraz śledz zmiany w projektach
+version=1.0
+qgisMinimumVersion=3.0
+author=Wojciech Szpikowski
+email=sraplikacja@gmail.com
+repository=URL to the code repository
+category=Database
