@@ -6,5 +6,5 @@ version=1.0
 qgisMinimumVersion=3.0
 author=Wojciech Szpikowski
 email=sraplikacja@gmail.com
-repository=URL to the code repository
+repository=https://github.com/wsz82/srapp_plugin/tree/master/srapp
 category=Database
