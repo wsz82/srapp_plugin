@@ -1,6 +1,7 @@
 import dataclasses
 from typing import *
 
+from database import constants
 from database.data import PointData
 from model import LocalToRemote
 from srapp_model.database import data
@@ -79,9 +80,19 @@ class Point(PointData):
         fields = OrderedDict()
         for local_name, remote_name in LOCAL_TO_REMOTE.items():
             fields.update({local_name: doc_map.get(remote_name)})
+
         raw_remote_time = fields.get(data.TIME)
         time = Data.remote_time_to_local(raw_remote_time)
         fields.update({data.TIME: time})
+
+        raw_borehole_status = fields.get(BOREHOLE_STATE)
+        borehole_status = constants.STATUSES_REMOTE_TO_LOCAL.get(raw_borehole_status)
+        fields.update({BOREHOLE_STATE: borehole_status})
+
+        raw_probe_status = fields.get(PROBE_STATE)
+        probe_status = constants.STATUSES_REMOTE_TO_LOCAL.get(raw_probe_status)
+        fields.update({PROBE_STATE: probe_status})
+
         todo_shear_depths = doc_map.get(SHEARS_TODO_LIST_REMOTE, [])
         todo_shears = [TodoShear(name, float(shear_depth)) for shear_depth in todo_shear_depths]
         return Point(x, y, fields, todo_shears)

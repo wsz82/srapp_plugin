@@ -11,93 +11,101 @@ from model import m_project
 from srapp_model.database import data
 from srapp_model.database import point
 from srapp_model.database.borehole import BoreholeProduct, Borehole
-from srapp_model.database.data import Data
+from srapp_model.database.data import Data, IFeature
 from srapp_model.database.layer import Layer
 from srapp_model.database.point import Point
 from srapp_model.database.probe import ProbeProduct, Probe, ProbeUnit
 from srapp_model.database.shear import TodoShear, ShearUnit
 from srapp_model.database.water import DrilledWaterHorizon, SetWaterHorizon, Exudation
-from test_srapp.fakes import FakeFeature, FakePointFeature
+from test_srapp.fakes import FakePointFeature
 
 
-class FakeShearFeature:
-    def __init__(self, depth: float, index: int, value: str):
-        self.depth = depth
-        self.index = index
-        self.value = value
+class FakeShearFeature(IFeature):
+    def __init__(self, depth, index, value):
+        super().__init__(None)
+        self._depth = depth
+        self._index = index
+        self._value = value
 
     def attribute(self, attr: str):
         if attr == shear.SHEAR_DEPTH:
-            return self.depth
+            return self._depth
         elif attr == shear.INDEX:
-            return self.index
+            return self._index
         elif attr == shear.VALUE:
-            return self.value
+            return self._value
 
 
-class FakeProbeUnitFeature:
-    def __init__(self, index: int, value: str):
-        self.index = index
-        self.value = value
+class FakeProbeUnitFeature(IFeature):
+    def __init__(self, index, value):
+        super().__init__(None)
+        self._index = index
+        self._value = value
 
     def attribute(self, attr: str):
         if attr == probe.INDEX:
-            return self.index
+            return self._index
         elif attr == probe.VALUE:
-            return self.value
+            return self._value
 
 
-class FakePersonFeature:
-    def __init__(self, name: str):
-        self.name = name
+class FakePersonFeature(IFeature):
+    def __init__(self, name):
+        super().__init__(None)
+        self._name = name
 
     def attribute(self, attr: str):
         if attr == data.PERSON:
-            return self.name
+            return self._name
 
 
-class FakeDrilledWaterFeature:
-    def __init__(self, horizon_value: str, depth: str, time_min: int):
-        self.horizon_value = horizon_value
-        self.depth = depth
-        self.time_min = time_min
+class FakeDrilledWaterFeature(IFeature):
+    def __init__(self, horizon_value, depth, time):
+        super().__init__(None)
+        self._horizon_value = horizon_value
+        self._depth = depth
+        self._time = time
 
     def attribute(self, attr: str):
         if attr == water.HORIZON:
-            return self.horizon_value
+            return self._horizon_value
         elif attr == water.WATER_DEPTH:
-            return self.depth
-        elif attr == water.TIME_MIN:
-            return self.time_min
+            return self._depth
+        elif attr == data.TIME:
+            return self._time
 
 
-class FakeExudationFeature:
-    def __init__(self, type: str, depth: str, time_min: int):
-        self.type = type
-        self.depth = depth
-        self.time_min = time_min
+class FakeExudationFeature(IFeature):
+
+    def __init__(self, type, depth, time):
+        super().__init__(None)
+        self._type = type
+        self._depth = depth
+        self._time = time
 
     def attribute(self, attr: str):
         if attr == water.EXUDATION_TYPE:
-            return self.type
+            return self._type
         elif attr == water.EXUDATION_DEPTH:
-            return self.depth
-        elif attr == water.TIME_MIN:
-            return self.time_min
+            return self._depth
+        elif attr == data.TIME:
+            return self._time
 
 
-class FakeTodoShearFeature:
-    def __init__(self, depth: float):
-        self.depth = depth
+class FakeTodoShearFeature(IFeature):
+    def __init__(self, depth):
+        super().__init__(None)
+        self._depth = depth
 
     def attribute(self, attr: float):
         if attr == shear.SHEAR_DEPTH:
-            return self.depth
+            return self._depth
 
 
-class FakeLayerFeature:
-    def __init__(self, to: float, type: str, admixtures: str, interbeddings: str, color: str, moisture: str,
-                 rollsNumber: str, soilState: str, sampling: float, desc: str):
+class FakeLayerFeature(IFeature):
+    def __init__(self, to: str, type: str, admixtures: str, interbeddings: str, color: str, moisture: str,
+                 rollsNumber: str, soilState: str, sampling: str, desc: str):
+        super().__init__(None)
         self.to = to
         self.type = type
         self.admixtures = admixtures
@@ -135,6 +143,15 @@ class FakeLayerFeature:
 class TestParse:
 
     @pytest.fixture
+    def raw_remote_time(self) -> DatetimeWithNanoseconds:
+        return DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc)
+
+    @pytest.fixture
+    def remote_time(self) -> str:
+        return Data.remote_time_to_local(
+            DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc))
+
+    @pytest.fixture
     def point_doc(self):
         return {'creator': 'wojtek',
                 'boreholeDesignedDepth': '6.5',
@@ -154,7 +171,6 @@ class TestParse:
                 'y': 488728.8,
                 'owner': 'Andrzej Kowalski',
                 'boreholeStatus': 'DONE'}
-
 
     @pytest.fixture
     def point_D1(self) -> dict:
@@ -236,19 +252,19 @@ class TestParse:
             ],
             "drilledWaterHorizons": [
                 {
-                    "depth": "0.80",
-                    "measurementTimestampMinutes": 27491816,
+                    "depth": "0.8",
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "data": "II"
                 },
                 {
-                    "measurementTimestampMinutes": 27491816,
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "depth": "2.21",
                     "data": "III"
                 },
                 {
                     "data": "I",
-                    "measurementTimestampMinutes": 27491816,
-                    "depth": "0.40"
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "depth": "0.4"
                 }
             ],
             "setWaterHorizons": [
@@ -260,7 +276,7 @@ class TestParse:
                         "minutes": 0
                     },
                     "data": "II",
-                    "measurementTimestampMinutes": 27491817,
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "depth": "1.30"
                 },
                 {
@@ -272,19 +288,19 @@ class TestParse:
                         "minutes": 0
                     },
                     "depth": "0.40",
-                    "measurementTimestampMinutes": 27491817
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                 }
             ],
             "exudations": [
                 {
-                    "depth": "0.50",
-                    "data": "~",
-                    "measurementTimestampMinutes": 27491817
+                    "depth": "0.5",
+                    "data": "1",
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                 },
                 {
-                    "depth": "0.20",
-                    "measurementTimestampMinutes": 27491817,
-                    "data": "≁"
+                    "depth": "0.2",
+                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "data": "2"
                 }
             ]
         }
@@ -293,12 +309,6 @@ class TestParse:
     def probe_D1(self) -> dict:
         return {
             'timestamp': DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
-            'point': {
-                'location': 'Kramsk',
-                'persons': ['Szpikowski Wojciech'],
-                'vehicleNumber': 'PKN4836',
-                'startDepth': 0.5
-            },
             'shears': [
                 {'depth': '1.6',
                  'torques': ['13', '24', '34', '56', '76', '87', '90', '100', '110', '90', '60', '50', '46', '45', '45',
@@ -313,6 +323,10 @@ class TestParse:
                 'interval': '0.2',
                 'probeType': 'DPL',
                 'units': ['3', '5', '7', '5', '8', '12', '14', '16', '14', '13', '17', '18', '15', '18', '17', '19'],
+                'location': 'Kramsk',
+                'persons': ['Szpikowski Wojciech'],
+                'vehicleNumber': 'PKN4836',
+                'startDepth': 0.5
             }
         }
 
@@ -346,7 +360,8 @@ class TestParse:
         assert p.y == 488728.8
         assert p.shears_todo == []
         keys = point.LOCAL_TO_REMOTE.local_names()
-        values = [Data.remote_time_to_local(timestamp), '3', 'wojtek', 86.7, 'PL-KRON86-NH', 'DONE', 'TODO', '6.5', '3.0',
+        values = [Data.remote_time_to_local(timestamp), '3', 'wojtek', 86.7, 'PL-KRON86-NH', 'Zrobiony', 'Do zrobienia',
+                  '6.5', '3.0',
                   False, 'DPL',
                   'Andrzej Kowalski', '', 'krolik', None]
         fields = dict(zip(keys, values))
@@ -373,8 +388,8 @@ class TestParse:
                               (point.CREATOR, 'wojtek'),
                               (point.HEIGHT, 86.7),
                               (point.HEIGHT_SYSTEM, 'PL-KRON86-NH'),
-                              (point.BOREHOLE_STATE, 'EMPTY'),
-                              (point.PROBE_STATE, 'EMPTY'),
+                              (point.BOREHOLE_STATE, ''),
+                              (point.PROBE_STATE, ''),
                               (point.BOREHOLE_DEPTH, '7.0'),
                               (point.PROBE_DEPTH, '3.5'),
                               (point.STAKEOUT, False),
@@ -386,7 +401,7 @@ class TestParse:
         expected = Point(460797.19, 488728.8, fields, shears_todo)
         assert parsed == expected
 
-    def test_borehole_is_parsed(self, borehole_D1):
+    def test_borehole_is_parsed(self, borehole_D1, remote_time):
         name = 'D1'
         parsed = BoreholeProduct.from_dict(borehole_D1)
         time = Data.remote_time_to_local(
@@ -398,27 +413,25 @@ class TestParse:
             Layer(name, float('2.3'), "Π", "Gπ", "Gpz", "Ciemno-brązowa", 'w/m', '5|6', 'tpl', None, 'opis2'),
         ]
         drilled_water = [
-            DrilledWaterHorizon(name, 'II', float('0.80'), 27491816),
-            DrilledWaterHorizon(name, 'III', float('2.21'), 27491816),
-            DrilledWaterHorizon(name, 'I', float('0.40'), 27491816),
+            DrilledWaterHorizon(name, 'II', float('0.80'), remote_time),
+            DrilledWaterHorizon(name, 'III', float('2.21'), remote_time),
+            DrilledWaterHorizon(name, 'I', float('0.40'), remote_time),
         ]
         set_water = [
-            SetWaterHorizon(name, 'II', float('1.30'), 27491817, 360),
-            SetWaterHorizon(name, 'I', float('0.40'), 27491817, 1440),
+            SetWaterHorizon(name, 'II', float('1.30'), remote_time, 360),
+            SetWaterHorizon(name, 'I', float('0.40'), remote_time, 1440),
         ]
         exudations = [
-            Exudation(name, '~', float('0.50'), 27491817),
-            Exudation(name, '≁', float('0.20'), 27491817),
+            Exudation(name, '1', float('0.50'), remote_time),
+            Exudation(name, '2', float('0.20'), remote_time),
         ]
         expected = BoreholeProduct(time, name, 'aplikacjametryka@gmail.com', borehole, layers, drilled_water, set_water,
                                    exudations)
         assert parsed == expected
 
-    def test_probe_is_parsed(self, probe_D1):
+    def test_probe_is_parsed(self, probe_D1, remote_time):
         name = 'D1'
         parsed = ProbeProduct.from_dict(probe_D1)
-        time = Data.remote_time_to_local(
-            DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc))
         units = [
             ProbeUnit(name, 0, '3'),
             ProbeUnit(name, 1, '5'),
@@ -477,7 +490,7 @@ class TestParse:
             ShearUnit(name, 2.7, 16, '13'),
             ShearUnit(name, 2.7, 17, '13'),
         ]
-        expected = ProbeProduct(time, name, 'aplikacjametryka@gmail.com', probe, shear_units)
+        expected = ProbeProduct(remote_time, name, 'aplikacjametryka@gmail.com', probe, shear_units)
         assert parsed == expected
 
     def test_borehole_time_field_is_first_and_name_second(self, borehole_D1):
@@ -586,11 +599,11 @@ class TestParse:
         }}
         assert parsed == expected
 
-    def test_water_horizons_are_parsed_to_remote(self, borehole_D1):
+    def test_water_horizons_are_parsed_to_remote(self, borehole_D1, raw_remote_time):
         features = [
-            FakeDrilledWaterFeature('II', '0.80', 27491816),
-            FakeDrilledWaterFeature('III', '2.21', 27491816),
-            FakeDrilledWaterFeature('I', '0.40', 27491816),
+            FakeDrilledWaterFeature('II', '0.80', raw_remote_time),
+            FakeDrilledWaterFeature('III', '2.21', raw_remote_time),
+            FakeDrilledWaterFeature('I', '0.40', raw_remote_time),
         ]
         parsed = m_project._water_horizons_map(features)
         map = borehole_D1.get(database.borehole.DRILLED_WATER_HORIZONS_REMOTE)
@@ -599,10 +612,10 @@ class TestParse:
         }
         assert parsed == expected
 
-    def test_exudations_are_parsed_to_remote(self, borehole_D1):
+    def test_exudations_are_parsed_to_remote(self, borehole_D1, raw_remote_time):
         features = [
-            FakeExudationFeature('~', '0.50', 27491817),
-            FakeExudationFeature('≁', '0.20', 27491817),
+            FakeExudationFeature('1', '0.50', raw_remote_time),
+            FakeExudationFeature('2', '0.20', raw_remote_time),
         ]
         parsed = m_project._exudations_list(features)
         map = borehole_D1.get(database.borehole.EXUDATIONS_REMOTE)
@@ -613,15 +626,15 @@ class TestParse:
 
     def test_layers_are_parsed_to_remote(self, borehole_D1):
         features = [
-            FakeLayerFeature(1, 'Pog', 'Po', 'Π', 'Brązowa', '', '', '', 0.5, 'opis1'),
-            FakeLayerFeature(2.3, 'Π', 'Gπ', 'Gpz', 'Ciemno-brązowa', 'w/m', '5|6', 'tpl', None, 'opis2'),
+            FakeLayerFeature('1', 'Pog', 'Po', 'Π', 'Brązowa', '', '', '', '0.5', 'opis1'),
+            FakeLayerFeature('2.3', 'Π', 'Gπ', 'Gpz', 'Ciemno-brązowa', 'w/m', '5|6', 'tpl', None, 'opis2'),
         ]
         parsed = m_project._layers_map(features)
         expected = {"layers": [
             {
-                "to": 1,
+                "to": '1.0',
                 "interbeddings": "Π",
-                "sampling": 0.5,
+                "sampling": '0.5',
                 "moisture": "",
                 "desc": "opis1",
                 "color": "Brązowa",
@@ -633,8 +646,8 @@ class TestParse:
             {
                 "color": "Ciemno-brązowa",
                 "admixtures": "Gπ",
-                "sampling": None,
-                "to": 2.3,
+                "sampling": '',
+                "to": '2.3',
                 "rollsNumber": "5|6",
                 "desc": "opis2",
                 "interbeddings": "Gpz",
@@ -669,7 +682,7 @@ class TestParse:
             'pointNumber': 'D1',
             'probeDesignedDepth': '3.5',
             'timestamp': DatetimeWithNanoseconds(2022, 5, 31, 6, 17, 1, tzinfo=datetime.timezone.utc),
-            'comments': None,
+            'comments': '',
             'probeStatus': 'EMPTY',
             'creator': 'wojtek',
             'isStakeoutDone': False,
@@ -685,8 +698,8 @@ class TestParse:
             point.CREATOR: 'wojtek',
             point.HEIGHT: 86.7,
             point.HEIGHT_SYSTEM: 'PL-KRON86-NH',
-            point.BOREHOLE_STATE: 'EMPTY',
-            point.PROBE_STATE: 'EMPTY',
+            point.BOREHOLE_STATE: '',
+            point.PROBE_STATE: '',
             point.BOREHOLE_DEPTH: '7.0',
             point.PROBE_DEPTH: '3.5',
             point.STAKEOUT: False,

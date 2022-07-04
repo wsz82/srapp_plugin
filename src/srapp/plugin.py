@@ -5,8 +5,13 @@ from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction
 from qgis._core import QgsProject
 from qgis._gui import QgisInterface
 
-import q_auth as auth
 import q_impl
+# setup logger
+from srapp_model import G
+
+G.Log = q_impl.Logger()
+
+import q_auth as auth
 from engine import synchronize
 from engine.synchronize import Synchronizer
 from model.m_qgis import IQgis
@@ -14,10 +19,8 @@ from model.m_user import User
 from q_auth import LoginError
 from q_impl import Qgis
 from srapp import q_project
-from srapp_model import G
 from srapp_model.model.m_project import Project
 
-G.Log = q_impl.Logger()
 _sync_instance: Synchronizer = None
 _user: User = None
 

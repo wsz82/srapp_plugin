@@ -15,13 +15,6 @@ def transfer_entry(from_map: dict, to_map: dict, key: str):
         to_map.update({key: from_map.pop(key)})
 
 
-POINTS_REMOTE = 'map_points'
-BOREHOLES_REMOTE = 'boreholes'
-PROBES_REMOTE = 'probes'
-TEAMS_REMOTE = 'teams'
-USERS_REMOTE = 'users'
-PROJECTS_REMOTE = 'projects'
-
 NAME = 'punkt'
 NAME_REMOTE = 'pointNumber'
 TIME = 'czas'
@@ -61,6 +54,16 @@ class IFeature(Generic[FTR]):
     @abc.abstractmethod
     def attributes(self) -> list:
         pass
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, IFeature):
+            return self.fid() == other.fid()
+        return NotImplemented
+
+    def __hash__(self):
+        """Overrides the default implementation"""
+        return hash(self.fid())
 
 
 class IPointFeature(IFeature, ABC):

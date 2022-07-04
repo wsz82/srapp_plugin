@@ -2,8 +2,7 @@ import dataclasses
 from typing import *
 
 from database import data
-from database.product_point import LAST_PERFORMER_REMOTE, LOCATION_REMOTE, VEHICLE_NUMBER_REMOTE, \
-    START_DEPTH_REMOTE
+from database.product_point import LAST_PERFORMER_REMOTE, LOCATION_REMOTE, VEHICLE_NUMBER_REMOTE, START_DEPTH_REMOTE
 from model import LocalToRemote
 from srapp_model.database import product_point
 from srapp_model.database.layer import Layer
@@ -31,7 +30,7 @@ LOCAL_TO_REMOTE: LocalToRemote[str, str] = LocalToRemote([
 
 
 def remote_transformation(data_map: Dict[str, str]) -> Dict[str, Any]:
-    data_map = product_point.remote_transformation(data_map)
+    data_map = product_point.remote_transformation(data_map, REMOTE_BOREHOLE)
     borehole_map = {}
     data.transfer_entry(data_map, borehole_map, REMOTE_DRILL_TYPE)
     if borehole_map:
@@ -69,7 +68,8 @@ class BoreholeProduct(Product):
     @staticmethod
     def from_dict(doc_map: dict) -> 'BoreholeProduct':
         timestamp, name, last_performer = Product.product_from_dict(doc_map)
-        persons, location, vehicle_number, start_depth = ProductPoint.product_point_from_dict(name, doc_map)
+        persons, location, vehicle_number, start_depth = ProductPoint.product_point_from_dict(name, doc_map,
+                                                                                              REMOTE_BOREHOLE)
 
         borehole_map = doc_map.get(REMOTE_BOREHOLE)
         drill_type = borehole_map.get(REMOTE_DRILL_TYPE, '')

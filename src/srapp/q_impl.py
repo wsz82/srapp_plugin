@@ -31,7 +31,6 @@ class Feature(IFeature[QgsFeature]):
     def attributes(self) -> list:
         result = []
         attrs: list = self.feature.attributes()
-        attrs.pop(0)
         for attr in attrs:
             result.append(Feature.filter_attr(attr))
         return result
@@ -40,7 +39,7 @@ class Feature(IFeature[QgsFeature]):
     def filter_attr(attr):
         if isinstance(attr, QDateTime):
             attr: QDateTime
-            return str(attr.toPyDateTime())
+            return attr.toPyDateTime()
         return attr if not isinstance(attr, QVariant) else None
 
 
@@ -86,6 +85,13 @@ class Qgis(IQgis):
 
 class MapLayer(IMapLayer[QgsVectorLayer]):
 
+    def field_names(self):
+        return self.layer.fields().names()
+
+    def features_by_fids(self, fids: List[int]):
+        all_features = self.all_features()
+        return [f for f in all_features if f.fid() in fids]
+
     def stop_edit_mode(self):
         self.layer.commitChanges(True)
 
@@ -93,7 +99,7 @@ class MapLayer(IMapLayer[QgsVectorLayer]):
         return QDateTime(timestamp)
 
     def all_features(self) -> List[IFeature]:
-        return [Feature(feat) for feat in self.layer.getFeatures()]
+        return [Feature(feat) for feat in self.layer.dataProvider().getFeatures()]
 
     def _add_feature(self, item):
         feature = item.to_feature(self.wrap_raw_feature(QgsFeature()))
@@ -146,17 +152,6 @@ class MapLayer(IMapLayer[QgsVectorLayer]):
 
 
 class PointsMapLayer(MapLayer):
-
-    def __init__(self, layer: QgsVectorLayer, qgis: IQgis):
-        super().__init__(layer, qgis)
-        self.committed_features_added(self.on_features_added)
-
-    def on_features_added(self, layer_id: str, features: Iterable[PointFeature]):
-        for feat in features:
-            existing_feat = self.features_by_name(feat.name())
-            if existing_feat:
-                # todo action when name is not unique, the same listener for changed name attr
-                pass
 
     def wrap_raw_feature(self, feature: FTR):
         return PointFeature(feature)

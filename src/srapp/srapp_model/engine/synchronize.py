@@ -42,7 +42,7 @@ class Synchronizer:
 
     def synchronize(self):
         for project in self.projects:
-            # todo maybe reset is not necessary
+            # todo not reseting means leaving the data that not exists in remote
             # project.reset()
             for layer in project.layers:
                 features = layer.all_features()
@@ -119,7 +119,7 @@ class Synchronizer:
         project, project_ref = self.project_layer_ref(layer)
         collection_ref = project_ref.collection(layer.database_ref_path)
         names = {layer.fid_to_name.get(fid) for fid in deleted_features_fids}
-        remote_update.on_items_deleted(collection_ref, names)
+        remote_update.on_items_deleted(collection_ref, names, layer.name)
 
     def _on_items_changed(self, layer: IMapLayer, features: List[IFeature]):
         project, project_ref = self.project_layer_ref(layer)

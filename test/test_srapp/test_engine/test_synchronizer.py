@@ -6,6 +6,7 @@ from google.api_core.datetime_helpers import DatetimeWithNanoseconds
 from google.cloud.firestore_v1.watch import ChangeType
 
 import logger
+import model.m_config
 from database.shear import TodoShear
 from model.m_layer import IMapLayer
 from srapp_model import G
@@ -17,7 +18,6 @@ from srapp_model.database.data import IFeature, Data
 from srapp_model.database.point import Point
 from srapp_model.engine.synchronize import Synchronizer
 from srapp_model.logger import ILogger
-from srapp_model.model import m_project
 from srapp_model.model.m_project import Project
 from srapp_model.model.m_qgis import IQgis
 from srapp_model.model.m_user import User
@@ -278,11 +278,11 @@ class TestSynchronizer:
             Point(0, 0, OrderedDict([(data.TIME, datetime.datetime.now()), (data.NAME, 'D2')]), []),
             Point(0, 0, OrderedDict([(data.TIME, datetime.datetime.now()), (data.NAME, 'D3')]), []),
         ]
-        project.points_layer = FakePointsMapLayer(m_project.POINTS_LAYER_STR, [], qgis)
+        project.points_layer = FakePointsMapLayer(model.m_config.POINTS_LAYER_STR, [], qgis)
         for p in points:
             point_name: str = p.attrs()[1]
             project.points_layer.add_feature(p, point_name)
-        project.shears_todo_layer = FakeMapLayer(m_project.SHEARS_TODO_LAYER_STR, [], qgis)
+        project.shears_todo_layer = FakeMapLayer(model.m_config.SHEARS_TODO_LAYER_STR, [], qgis)
         project.shears_todo_layer.add_features(shears, 'D1')
         projects = [project]
         synchronizer = Synchronizer(qgis, FakeUser('fake@mail.com'), projects)

@@ -1,7 +1,15 @@
 from google.cloud import firestore_v1
 from google.cloud.firestore_v1 import DocumentReference, CollectionReference
 
-from database import data
+from database import constants
+
+USERS_REMOTE = 'users'
+VERSIONS_REMOTE = 'versions'
+PROJECTS_REMOTE = 'projects'
+BOREHOLES_REMOTE = 'boreholes'
+PROBES_REMOTE = 'probes'
+POINTS_REMOTE = 'map_points'
+TEAMS_REMOTE = 'teams'
 
 
 class User:
@@ -13,17 +21,17 @@ class User:
         return self.client is not None
 
     def project_ref(self, project_name) -> DocumentReference:
-        return self.client.collection(data.USERS_REMOTE).document(self.email).collection(data.PROJECTS_REMOTE).document(
-            project_name)
+        return self.client.collection(USERS_REMOTE).document(self.email).collection(VERSIONS_REMOTE) \
+            .document(constants.DATABASE_VERSION).collection(PROJECTS_REMOTE).document(project_name)
 
     def map_points_ref(self, project_name) -> CollectionReference:
-        return self.project_ref(project_name).collection(data.POINTS_REMOTE)
+        return self.project_ref(project_name).collection(POINTS_REMOTE)
 
     def boreholes_ref(self, project_name) -> CollectionReference:
-        return self.project_ref(project_name).collection(data.BOREHOLES_REMOTE)
+        return self.project_ref(project_name).collection(BOREHOLES_REMOTE)
 
     def probes_ref(self, project_name) -> CollectionReference:
-        return self.project_ref(project_name).collection(data.PROBES_REMOTE)
+        return self.project_ref(project_name).collection(PROBES_REMOTE)
 
     def teams_ref(self, project_name) -> CollectionReference:
-        return self.project_ref(project_name).collection(data.TEAMS_REMOTE)
+        return self.project_ref(project_name).collection(TEAMS_REMOTE)

@@ -35,7 +35,7 @@ LOCAL_TO_REMOTE: LocalToRemote[str, str] = LocalToRemote([
 
 
 def remote_transformation(data_map: Dict[str, str]) -> Dict[str, Any]:
-    data_map = product_point.remote_transformation(data_map)
+    data_map = product_point.remote_transformation(data_map, REMOTE_PROBE)
     probe_map = {}
     data.transfer_entry(data_map, probe_map, PROBE_TYPE_REMOTE)
     data.transfer_entry(data_map, probe_map, INTERVAL_REMOTE)
@@ -97,7 +97,8 @@ class ProbeProduct(Product, Data):
     @staticmethod
     def from_dict(doc_map: dict) -> 'ProbeProduct':
         timestamp, name, last_performer = Product.product_from_dict(doc_map)
-        persons, location, vehicle_number, start_depth = ProductPoint.product_point_from_dict(name, doc_map)
+        persons, location, vehicle_number, start_depth = ProductPoint.product_point_from_dict(name, doc_map,
+                                                                                              REMOTE_PROBE)
 
         probe_map = doc_map.get(REMOTE_PROBE)
         probe_type = probe_map.get(PROBE_TYPE_REMOTE, '')

@@ -66,7 +66,7 @@ class Layer(Data):
             sampling = None
         return Layer(
             name,
-            float(doc_map.get(TO_REMOTE)),
+            float(doc_map.get(TO_REMOTE) or 0),
             doc_map.get(TYPE_REMOTE, ''),
             doc_map.get(ADMIXTURES_REMOTE, ''),
             doc_map.get(INTERBEDDINGS_REMOTE, ''),

@@ -2,10 +2,16 @@ import os
 from pathlib import Path
 from typing import *
 
+from PyQt5.QtGui import QColor, QFont
 from qgis.PyQt.QtCore import QVariant
-from qgis._core import (QgsProject, QgsLayerTree, QgsFieldConstraints)
+from qgis._core import (QgsProject, QgsLayerTree, QgsFieldConstraints, QgsMarkerSymbol, QgsPalLayerSettings,
+                        QgsTextFormat, QgsTextBufferSettings, QgsVectorLayerSimpleLabeling)
 from qgis._core import (QgsVectorLayer, QgsField, QgsMessageLog, QgsVectorFileWriter, QgsCoordinateTransformContext)
 
+import model.m_config
+from database import data
+from model.m_config import LAYER_NAME_TO_FIELDS_CONSTRAINTS
+from model.m_field import FieldConstraint
 from model.m_layer import IMapLayer
 from model.m_qgis import IQgis
 from q_impl import MapLayer, PointsMapLayer
@@ -42,19 +48,19 @@ def create_files(project: Project):
 
 def _create_layers(project: Project):
     creator = LayerFieldCreator()
-    _create_layer(project, 'Point', m_project.POINTS_LAYER_STR, m_project.points_fields(creator))
-    _create_layer(project, 'None', m_project.BOREHOLES_LAYER_STR, m_project.boreholes_fields(creator))
-    _create_layer(project, 'None', m_project.BOREHOLE_PERSONS_LAYER_STR, m_project.persons_fields(creator))
-    _create_layer(project, 'None', m_project.LAYERS_LAYER_STR, m_project.layers_fields(creator))
-    _create_layer(project, 'None', m_project.DRILLED_WATER_LAYER_STR, m_project.drilled_water_fields(creator))
-    _create_layer(project, 'None', m_project.SET_WATER_LAYER_STR, m_project.set_water_fields(creator))
-    _create_layer(project, 'None', m_project.EXUDATIONS_LAYER_STR, m_project.exudations_fields(creator))
-    _create_layer(project, 'None', m_project.PROBES_LAYER_STR, m_project.probes_fields(creator))
-    _create_layer(project, 'None', m_project.PROBE_UNITS_LAYER_STR, m_project.probe_unit_fields(creator))
-    _create_layer(project, 'None', m_project.PROBE_PERSONS_LAYER_STR, m_project.persons_fields(creator))
-    _create_layer(project, 'None', m_project.SHEARS_TODO_LAYER_STR, m_project.shears_todo_fields(creator))
-    _create_layer(project, 'None', m_project.SHEAR_UNITS_LAYER_STR, m_project.shear_unit_fields(creator))
-    _create_layer(project, 'Point', m_project.TEAMS_LAYER_STR, m_project.teams_fields(creator))
+    _create_layer(project, 'Point', model.m_config.POINTS_LAYER_STR, m_project.points_fields(creator))
+    _create_layer(project, 'None', model.m_config.BOREHOLES_LAYER_STR, m_project.boreholes_fields(creator))
+    _create_layer(project, 'None', model.m_config.BOREHOLE_PERSONS_LAYER_STR, m_project.persons_fields(creator))
+    _create_layer(project, 'None', model.m_config.LAYERS_LAYER_STR, m_project.layers_fields(creator))
+    _create_layer(project, 'None', model.m_config.DRILLED_WATER_LAYER_STR, m_project.drilled_water_fields(creator))
+    _create_layer(project, 'None', model.m_config.SET_WATER_LAYER_STR, m_project.set_water_fields(creator))
+    _create_layer(project, 'None', model.m_config.EXUDATIONS_LAYER_STR, m_project.exudations_fields(creator))
+    _create_layer(project, 'None', model.m_config.PROBES_LAYER_STR, m_project.probes_fields(creator))
+    _create_layer(project, 'None', model.m_config.PROBE_UNITS_LAYER_STR, m_project.probe_unit_fields(creator))
+    _create_layer(project, 'None', model.m_config.PROBE_PERSONS_LAYER_STR, m_project.persons_fields(creator))
+    _create_layer(project, 'None', model.m_config.SHEARS_TODO_LAYER_STR, m_project.shears_todo_fields(creator))
+    _create_layer(project, 'None', model.m_config.SHEAR_UNITS_LAYER_STR, m_project.shear_unit_fields(creator))
+    _create_layer(project, 'Point', model.m_config.TEAMS_LAYER_STR, m_project.teams_fields(creator))
 
 
 def _create_layer(project: Project, geometry: str, layer_name: str, fields: []):
@@ -98,54 +104,50 @@ def add_project_to_qgis(project: Project):
     set_project_layers(layer_supplier, project, IQgis(qgs))
 
 
-def set_project_layers(layer_supplier: Callable[[str], Any], project: Project, iqgis: IQgis):
+def set_project_layers(layer_supplier: Callable[[str], QgsVectorLayer], project: Project, iqgis: IQgis):
     map_layers: OrderedDict[str, IMapLayer] = OrderedDict()
     for layer_name in project.layers_names:
-        qgis_layer = layer_supplier(layer_name)
+        qgis_layer: QgsVectorLayer = layer_supplier(layer_name)
         constructor: callable
-        if layer_name == m_project.POINTS_LAYER_STR or layer_name == m_project.TEAMS_LAYER_STR:
+        if layer_name == model.m_config.POINTS_LAYER_STR or layer_name == model.m_config.TEAMS_LAYER_STR:
             constructor = PointsMapLayer
+            if layer_name == model.m_config.TEAMS_LAYER_STR:
+                symbol: QgsMarkerSymbol = qgis_layer.renderer().symbol()
+                symbol.setColor(QColor('yellow'))
+                _set_layer_style(qgis_layer, data.NAME, 16, 'red', 'white')
+            elif layer_name == model.m_config.POINTS_LAYER_STR:
+                _set_layer_style(qgis_layer, data.NAME, 12, 'black', 'white')
         else:
             constructor = MapLayer
         layer = constructor(qgis_layer, iqgis)
+
         map_layers.update({layer_name: layer})
     project.set_layers(**map_layers)
 
 
-LAYER_NAME_TO_FIELDS_CONSTRAINTS: Dict[str, Dict[int, Set[QgsFieldConstraints.Constraint]]] = {
-    m_project.POINTS_LAYER_STR: {
-        2: {QgsFieldConstraints.Constraint.ConstraintNotNull, QgsFieldConstraints.Constraint.ConstraintUnique}},
-    m_project.BOREHOLES_LAYER_STR: {
-        2: {QgsFieldConstraints.Constraint.ConstraintNotNull, QgsFieldConstraints.Constraint.ConstraintUnique}},
-    m_project.PROBES_LAYER_STR: {
-        2: {QgsFieldConstraints.Constraint.ConstraintNotNull, QgsFieldConstraints.Constraint.ConstraintUnique},
-        8: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.TEAMS_LAYER_STR: {
-        2: {QgsFieldConstraints.Constraint.ConstraintNotNull, QgsFieldConstraints.Constraint.ConstraintUnique}},
-    m_project.SHEARS_TODO_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      2: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.BOREHOLE_PERSONS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                           2: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.PROBE_PERSONS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                        2: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.LAYERS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                 2: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.DRILLED_WATER_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                        2: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                        3: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.SET_WATER_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                    2: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                    3: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.EXUDATIONS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                     2: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                     3: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.PROBE_UNITS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      2: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      3: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
-    m_project.SHEAR_UNITS_LAYER_STR: {1: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      2: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      3: {QgsFieldConstraints.Constraint.ConstraintNotNull},
-                                      4: {QgsFieldConstraints.Constraint.ConstraintNotNull}},
+def _set_layer_style(qgis_layer: QgsVectorLayer, field_name: str, font_size: int, text_color: str, outline_color: str):
+    layer_settings = QgsPalLayerSettings()
+    text_format = QgsTextFormat()
+    text_format.setFont(QFont("Arial", font_size))
+    text_format.setSize(font_size)
+    text_format.setColor(QColor(text_color))
+    buffer_settings = QgsTextBufferSettings()
+    buffer_settings.setEnabled(True)
+    buffer_settings.setSize(1)
+    buffer_settings.setColor(QColor(outline_color))
+    text_format.setBuffer(buffer_settings)
+    layer_settings.setFormat(text_format)
+    layer_settings.fieldName = field_name
+    layer_settings.placement = 2
+    layer_settings.enabled = True
+    layer_settings = QgsVectorLayerSimpleLabeling(layer_settings)
+    qgis_layer.setLabelsEnabled(True)
+    qgis_layer.setLabeling(layer_settings)
+
+
+FIELD_CONSTRAINT_ABSTRACT_TO_IMPLEMENTATION = {
+    FieldConstraint.NOT_NULL: QgsFieldConstraints.Constraint.ConstraintNotNull,
+    FieldConstraint.UNIQUE: QgsFieldConstraints.Constraint.ConstraintUnique,
 }
 
 
@@ -159,7 +161,11 @@ def _add_layer_to_qgis(gpkg_file_path: str, group: QgsLayerTree, qgs: QgsProject
     fields_idx_to_constraints = LAYER_NAME_TO_FIELDS_CONSTRAINTS.get(layer_name)
     for idx, constraints in fields_idx_to_constraints.items():
         for constraint in constraints:
-            layer.setFieldConstraint(idx, constraint, QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
+            constraint_impl = FIELD_CONSTRAINT_ABSTRACT_TO_IMPLEMENTATION.get(constraint)
+            if not constraint_impl:
+                continue
+            layer.setFieldConstraint(idx, constraint_impl,
+                                     QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
 
     QgsMessageLog.logMessage(f'Dodano warstwę "{layer_name}"', 'SRApp')
     return layer

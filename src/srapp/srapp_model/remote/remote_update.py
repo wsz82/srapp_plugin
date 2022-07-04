@@ -4,15 +4,16 @@ from typing import *
 from google.cloud.firestore_v1 import CollectionReference, DocumentReference
 from google.cloud.firestore_v1.types import WriteResult
 
-from database import data
 from model.m_layer import IMapLayer
 from srapp_model import G
 
+DATABASE_TAG = 'SRApp - baza danych'
 
-def on_items_deleted(collection_ref: CollectionReference, names: Set[str]):
+
+def on_items_deleted(collection_ref: CollectionReference, names: Set[str], layer_name: str):
     for name in names:
-        collection_ref.document(make_valid_id(name)).delete()
-        G.Log.message(f'Usunięto "{name}"', 'SRApp - baza danych')
+        result = collection_ref.document(make_valid_id(name)).delete()
+        G.Log.message(f'{layer_name}: usunięto "{name}"', DATABASE_TAG)
 
 
 def on_items_modify(project_ref: DocumentReference, names: Set[str], layer: IMapLayer):
@@ -21,13 +22,10 @@ def on_items_modify(project_ref: DocumentReference, names: Set[str], layer: IMap
         features = layer.features_by_name(name)
         all_items_map: dict = layer.features_to_remote(features)
         for item_name, item_map in all_items_map.items():
-            time: str = item_map.pop(data.TIME_REMOTE)
-            if time:
-                item_map.update({data.TIME_REMOTE: _parse_time(time)})
             item_ref = items_ref.document(make_valid_id(item_name))
-            item_ref.set(item_map, True)
-            # todo check if success
-            G.Log.message(f'Dodano "{item_name}"', 'SRApp - baza danych')
+            result: WriteResult = item_ref.set(item_map, True)
+            result_message = make_result_message(result)
+            G.Log.message(f'{layer.name}: zmieniono "{item_name}" - {result_message}', DATABASE_TAG)
 
 
 def _parse_time(time_str: str):
@@ -42,8 +40,15 @@ def on_subitems_modify(project_ref: DocumentReference, names: Set[str], layer: I
         assert features
         data_map = layer.features_to_remote(features)
         result: WriteResult = item_ref.set(data_map, True)
-        # todo check if success
-        G.Log.message(f'Zmodyfikowano "{name}"', 'SRApp - baza danych')
+        result_message = make_result_message(result)
+        G.Log.message(f'{layer.name}: zmieniono "{name}" - {result_message}', DATABASE_TAG)
+
+
+def make_result_message(result):
+    if result.update_time:
+        return 'powodzenie'
+    else:
+        return 'niepowodzenie'
 
 
 def make_valid_id(id: str) -> str:

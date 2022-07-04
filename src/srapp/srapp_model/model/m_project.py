@@ -1,11 +1,16 @@
 import abc
+import datetime
 import enum
 import os
 from typing import *
 
 import database.borehole
-from database import data, person, product_point, team
+import model.m_user
+from database import data, person, product_point, team, constants
 from database.data import IFeature, IPointFeature
+from model.m_config import SHEARS_TODO_LAYER_STR, BOREHOLES_LAYER_STR, BOREHOLE_PERSONS_LAYER_STR, LAYERS_LAYER_STR, \
+    DRILLED_WATER_LAYER_STR, SET_WATER_LAYER_STR, EXUDATIONS_LAYER_STR, PROBES_LAYER_STR, PROBE_UNITS_LAYER_STR, \
+    PROBE_PERSONS_LAYER_STR, SHEAR_UNITS_LAYER_STR, TEAMS_LAYER_STR, POINTS_LAYER_STR
 from model.m_layer import IMapLayer
 from srapp_model.database import point
 from srapp_model.database import shear, borehole, probe, layer, water
@@ -196,25 +201,13 @@ def teams_fields(creator: IFieldCreator) -> List[FLD]:
     return fields
 
 
-POINTS_LAYER_STR = 'punkty'
-SHEARS_TODO_LAYER_STR = 'sciecia_do_zrobienia'
-BOREHOLES_LAYER_STR = 'wiercenia'
-BOREHOLE_PERSONS_LAYER_STR = 'wiercenia_wykonawcy'
-LAYERS_LAYER_STR = 'wiercenia_warstwy'
-DRILLED_WATER_LAYER_STR = 'woda_nawiercona'
-SET_WATER_LAYER_STR = 'woda_ustalona'
-EXUDATIONS_LAYER_STR = 'wysieki'
-PROBES_LAYER_STR = 'sondowania'
-PROBE_UNITS_LAYER_STR = 'sondowania_wartosci'
-PROBE_PERSONS_LAYER_STR = 'sondowania_wykonawcy'
-SHEAR_UNITS_LAYER_STR = 'sciecia_wartosci'
-TEAMS_LAYER_STR = 'zespoły'
-
-
 def _persons_list_map(features: List[IFeature]) -> dict:
     elements = []
     for feat in features:
-        element = feat.attribute(data.PERSON)
+        element = str(feat.attribute(data.PERSON) or '')
+        if not element:
+            continue
+        assert type(element) is str
         elements.append(element)
     data_map = {
         product_point.REMOTE_POINT: {
@@ -226,12 +219,15 @@ def _persons_list_map(features: List[IFeature]) -> dict:
 
 def _probe_units_list_map(features: List[IFeature]) -> dict:
     def sorter(feat: IFeature) -> int:
-        return feat.attribute(probe.INDEX)
+        idx = feat.attribute(shear.INDEX)
+        assert type(idx) is int
+        return idx
 
     features.sort(key=sorter)
     elements = []
     for feat in features:
-        element = feat.attribute(probe.VALUE)
+        element = str(feat.attribute(probe.VALUE) or '')
+        assert type(element) is str
         elements.append(element)
     data_map = {
         probe.REMOTE_PROBE: {
@@ -242,16 +238,21 @@ def _probe_units_list_map(features: List[IFeature]) -> dict:
 
 
 def _shear_units_list_map(features: List[IFeature]) -> dict:
-    depths_set = {f.attribute(shear.SHEAR_DEPTH) for f in features}
+    depths_set = {_round_depth(float(f.attribute(shear.SHEAR_DEPTH) or 0)) for f in features}
     shears = []
 
     def sorter(feat: IFeature) -> int:
-        return feat.attribute(shear.INDEX)
+        idx = feat.attribute(shear.INDEX)
+        assert type(idx) is int
+        return idx
 
     for depth in depths_set:
+        assert type(depth) is float
         depth_features = [f for f in features if f.attribute(shear.SHEAR_DEPTH) == depth]
         depth_features.sort(key=sorter)
         shears_torques = [f.attribute(shear.VALUE) for f in depth_features]
+        for t in shears_torques:
+            assert type(t) is str
         shear_map = {
             shear.SHEAR_DEPTH_REMOTE: str(depth),
             shear.TORQUES_REMOTE: shears_torques
@@ -266,11 +267,15 @@ def _shear_units_list_map(features: List[IFeature]) -> dict:
 def _water_horizons_map(features: List[IFeature]) -> dict:
     horizons_list = []
     for feat in features:
-        horizon_value = feat.attribute(water.HORIZON)
+        horizon_value = str(feat.attribute(water.HORIZON))
+        assert type(horizon_value) is str
+        water_depth = str(_round_depth(float(feat.attribute(water.WATER_DEPTH) or 0)))
+        assert type(water_depth) is str
+        time = _make_time(feat)
         horizons_list.append({
             water.REMOTE_DATA: horizon_value,
-            water.WATER_DEPTH_REMOTE: feat.attribute(water.WATER_DEPTH),
-            water.TIME_MIN_REMOTE: feat.attribute(water.TIME_MIN),
+            water.WATER_DEPTH_REMOTE: water_depth,
+            water.TIME_REMOTE: time,
         })
     data_map = {
         database.borehole.DRILLED_WATER_HORIZONS_REMOTE: horizons_list
@@ -281,11 +286,15 @@ def _water_horizons_map(features: List[IFeature]) -> dict:
 def _exudations_list(features: List[IFeature]) -> dict:
     exudations_list = []
     for feat in features:
-        depth_value = feat.attribute(water.EXUDATION_DEPTH)
+        exudation_type = str(feat.attribute(water.EXUDATION_TYPE) or '')
+        assert type(exudation_type) is str
+        depth_value = str(_round_depth(float(feat.attribute(water.EXUDATION_DEPTH) or 0)))
+        assert type(depth_value) is str
+        time = _make_time(feat)
         exudations_list.append({
-            water.REMOTE_DATA: feat.attribute(water.EXUDATION_TYPE),
+            water.REMOTE_DATA: exudation_type,
             water.WATER_DEPTH_REMOTE: depth_value,
-            water.TIME_MIN_REMOTE: feat.attribute(water.TIME_MIN),
+            water.TIME_REMOTE: time,
         })
     data_map = {
         database.borehole.EXUDATIONS_REMOTE: exudations_list
@@ -296,17 +305,37 @@ def _exudations_list(features: List[IFeature]) -> dict:
 def _layers_map(features: List[IFeature]) -> dict:
     layers_list = []
     for feat in features:
+        to = str(_round_depth(float(feat.attribute(layer.TO) or 0)))
+        assert type(to) is str
+        soil_type = feat.attribute(layer.TYPE) or ''
+        assert type(soil_type) is str
+        admixtures = feat.attribute(layer.ADMIXTURES) or ''
+        assert type(admixtures) is str
+        interbeddings = feat.attribute(layer.INTERBEDDINGS) or ''
+        assert type(interbeddings) is str
+        color = feat.attribute(layer.COLOR) or ''
+        assert type(color) is str
+        moisture = feat.attribute(layer.MOISTURE) or ''
+        assert type(moisture) is str
+        rolls_number = feat.attribute(layer.ROLLS_NUMBER) or ''
+        assert type(rolls_number) is str
+        soil_state = feat.attribute(layer.SOIL_STATE) or ''
+        assert type(soil_state) is str
+        sampling = str(feat.attribute(layer.SAMPLING) or '')
+        assert type(sampling) is str
+        description = feat.attribute(layer.DESCRIPTION) or ''
+        assert type(description) is str
         layers_list.append({
-            layer.TO_REMOTE: feat.attribute(layer.TO),
-            layer.TYPE_REMOTE: feat.attribute(layer.TYPE),
-            layer.ADMIXTURES_REMOTE: feat.attribute(layer.ADMIXTURES),
-            layer.INTERBEDDINGS_REMOTE: feat.attribute(layer.INTERBEDDINGS),
-            layer.COLOR_REMOTE: feat.attribute(layer.COLOR),
-            layer.MOISTURE_REMOTE: feat.attribute(layer.MOISTURE),
-            layer.ROLLS_NUMBER_REMOTE: feat.attribute(layer.ROLLS_NUMBER),
-            layer.SOIL_STATE_REMOTE: feat.attribute(layer.SOIL_STATE),
-            layer.SAMPLING_REMOTE: feat.attribute(layer.SAMPLING),
-            layer.DESCRIPTION_REMOTE: feat.attribute(layer.DESCRIPTION),
+            layer.TO_REMOTE: to,
+            layer.TYPE_REMOTE: soil_type,
+            layer.ADMIXTURES_REMOTE: admixtures,
+            layer.INTERBEDDINGS_REMOTE: interbeddings,
+            layer.COLOR_REMOTE: color,
+            layer.MOISTURE_REMOTE: moisture,
+            layer.ROLLS_NUMBER_REMOTE: rolls_number,
+            layer.SOIL_STATE_REMOTE: soil_state,
+            layer.SAMPLING_REMOTE: sampling,
+            layer.DESCRIPTION_REMOTE: description,
         })
     data_map = {
         database.borehole.LAYERS_REMOTE: layers_list
@@ -317,7 +346,8 @@ def _layers_map(features: List[IFeature]) -> dict:
 def _todo_shears_list(features: List[IFeature]) -> dict:
     todo_shears_list = []
     for feat in features:
-        shear_depth = feat.attribute(shear.SHEAR_DEPTH)
+        shear_depth = _round_depth(float(feat.attribute(shear.SHEAR_DEPTH) or 0))
+        assert type(shear_depth) is float
         todo_shears_list.append(shear_depth)
     data_map = {
         point.SHEARS_TODO_LIST_REMOTE: todo_shears_list
@@ -328,28 +358,52 @@ def _todo_shears_list(features: List[IFeature]) -> dict:
 def _points_map(features: List[IPointFeature]) -> dict:
     data_map = {}
     for feature in features:
-        raw_borehole_depth = feature.attribute(point.BOREHOLE_DEPTH)
-        borehole_depth = str(raw_borehole_depth if raw_borehole_depth else 0)
-        raw_probe_depth = feature.attribute(point.PROBE_DEPTH)
-        probe_depth = str(raw_probe_depth if raw_probe_depth else 0)
-        name = feature.attribute(data.NAME)
-        height = feature.attribute(point.HEIGHT)
+        borehole_depth: str = str(_round_depth(float(feature.attribute(point.BOREHOLE_DEPTH) or 0)))
+        assert type(borehole_depth) is str
+        probe_depth: str = str(_round_depth(float(feature.attribute(point.PROBE_DEPTH) or 0)))
+        assert type(probe_depth) is str
+        name = _make_name(feature)
+        height: float = _round_depth(float(feature.attribute(point.HEIGHT) or 0))
+        assert type(height) is float
+        stakeout: bool = feature.attribute(point.STAKEOUT) or False
+        assert type(stakeout) is bool
+        creator: str = feature.attribute(point.CREATOR) or ''
+        assert type(creator) is str
+        height_system: str = feature.attribute(point.HEIGHT_SYSTEM) or ''
+        assert type(height_system) is str
+        borehole_state: str = feature.attribute(point.BOREHOLE_STATE) or ''
+        borehole_state = constants.STATUSES_REMOTE_TO_LOCAL.key(borehole_state)
+        assert type(borehole_state) is str
+        probe_state: str = feature.attribute(point.PROBE_STATE) or ''
+        probe_state = constants.STATUSES_REMOTE_TO_LOCAL.key(probe_state)
+        assert type(probe_state) is str
+        probe_type: str = feature.attribute(point.PROBE_TYPE) or ''
+        assert type(probe_type) is str
+        owner: str = feature.attribute(point.OWNER) or ''
+        assert type(owner) is str
+        contact: str = feature.attribute(point.CONTACT) or ''
+        assert type(contact) is str
+        assigned_performer: str = feature.attribute(point.ASSIGNED_PERFORMER) or ''
+        assert type(assigned_performer) is str
+        comments: str = feature.attribute(point.COMMENTS) or ''
+        assert type(comments) is str
+        time = _make_time(feature)
         point_map = {
-            data.TIME_REMOTE: feature.attribute(data.TIME),
+            data.TIME_REMOTE: time,
             data.NAME_REMOTE: name,
-            point.CREATOR_REMOTE: feature.attribute(point.CREATOR),
-            point.HEIGHT_REMOTE: height if height else 0,
-            point.HEIGHT_SYSTEM_REMOTE: feature.attribute(point.HEIGHT_SYSTEM),
-            point.BOREHOLE_STATE_REMOTE: feature.attribute(point.BOREHOLE_STATE),
-            point.PROBE_STATE_REMOTE: feature.attribute(point.PROBE_STATE),
+            point.CREATOR_REMOTE: creator,
+            point.HEIGHT_REMOTE: height,
+            point.HEIGHT_SYSTEM_REMOTE: height_system,
+            point.BOREHOLE_STATE_REMOTE: borehole_state,
+            point.PROBE_STATE_REMOTE: probe_state,
             point.BOREHOLE_DEPTH_REMOTE: borehole_depth,
             point.PROBE_DEPTH_REMOTE: probe_depth,
-            point.STAKEOUT_REMOTE: feature.attribute(point.STAKEOUT),
-            point.PROBE_TYPE_REMOTE: feature.attribute(point.PROBE_TYPE),
-            point.OWNER_REMOTE: feature.attribute(point.OWNER),
-            point.CONTACT_REMOTE: feature.attribute(point.CONTACT),
-            point.ASSIGNED_PERFORMER_REMOTE: feature.attribute(point.ASSIGNED_PERFORMER),
-            point.COMMENTS_REMOTE: feature.attribute(point.COMMENTS),
+            point.STAKEOUT_REMOTE: stakeout,
+            point.PROBE_TYPE_REMOTE: probe_type,
+            point.OWNER_REMOTE: owner,
+            point.CONTACT_REMOTE: contact,
+            point.ASSIGNED_PERFORMER_REMOTE: assigned_performer,
+            point.COMMENTS_REMOTE: comments,
         }
         x, y = feature.xy()
         point_map.update({
@@ -363,17 +417,12 @@ def _points_map(features: List[IPointFeature]) -> dict:
 def _boreholes_map(features: List[IFeature]) -> dict:
     data_map = {}
     for feature in features:
-        time = feature.attribute(data.TIME)
-        name = feature.attribute(data.NAME)
-        borehole_map = {
-            data.TIME_REMOTE: time,
-            data.NAME_REMOTE: name,
-            product_point.LAST_PERFORMER_REMOTE: feature.attribute(product_point.LAST_PERFORMER),
-            product_point.LOCATION_REMOTE: feature.attribute(product_point.LOCATION),
-            product_point.VEHICLE_NUMBER_REMOTE: feature.attribute(product_point.VEHICLE_NUMBER),
-            product_point.START_DEPTH_REMOTE: feature.attribute(product_point.START_DEPTH),
-            borehole.REMOTE_DRILL_TYPE: feature.attribute(product_point.TYPE),
-        }
+        name, borehole_map = _product_point_map(feature)
+        drill_type = str(feature.attribute(product_point.TYPE) or '')
+        assert type(drill_type) is str
+        borehole_map.update({
+            borehole.REMOTE_DRILL_TYPE: drill_type,
+        })
         borehole_map = borehole.remote_transformation(borehole_map)
         data_map.update({name: borehole_map})
     return data_map
@@ -382,28 +431,65 @@ def _boreholes_map(features: List[IFeature]) -> dict:
 def _probes_map(features: List[IFeature]) -> dict:
     data_map = {}
     for feature in features:
-        time = feature.attribute(data.TIME)
-        name = feature.attribute(data.NAME)
-        probe_map = {
-            data.TIME_REMOTE: time,
-            data.NAME_REMOTE: name,
-            product_point.LAST_PERFORMER_REMOTE: feature.attribute(product_point.LAST_PERFORMER),
-            product_point.LOCATION_REMOTE: feature.attribute(product_point.LOCATION),
-            product_point.VEHICLE_NUMBER_REMOTE: feature.attribute(product_point.VEHICLE_NUMBER),
-            product_point.START_DEPTH_REMOTE: feature.attribute(product_point.START_DEPTH),
-            probe.PROBE_TYPE_REMOTE: feature.attribute(probe.PROBE_TYPE),
-            probe.INTERVAL_REMOTE: feature.attribute(probe.INTERVAL),
-        }
+        name, probe_map = _product_point_map(feature)
+        drill_type = str(feature.attribute(product_point.TYPE) or '')
+        assert type(drill_type) is str
+        probe_type = str(feature.attribute(probe.PROBE_TYPE) or '')
+        assert type(probe_type) is str
+        interval = float(feature.attribute(probe.INTERVAL) or constants.DEFAULT_PROBE_INTERVAL)
+        assert type(interval) is float
+        probe_map.update({
+            probe.PROBE_TYPE_REMOTE: probe_type,
+            probe.INTERVAL_REMOTE: interval,
+        })
         probe_map = probe.remote_transformation(probe_map)
         data_map.update({name: probe_map})
     return data_map
 
 
+def _product_point_map(feature):
+    time = _make_time(feature)
+    name = _make_name(feature)
+    last_performer = str(feature.attribute(product_point.LAST_PERFORMER) or '')
+    assert type(last_performer) is str
+    location = str(feature.attribute(product_point.LOCATION) or '')
+    assert type(location) is str
+    vehicle_number = str(feature.attribute(product_point.VEHICLE_NUMBER) or '')
+    assert type(vehicle_number) is str
+    start_depth = _round_depth(float(feature.attribute(product_point.START_DEPTH) or 0))
+    assert type(start_depth) is float
+    point_map = {
+        data.TIME_REMOTE: time,
+        data.NAME_REMOTE: name,
+        product_point.LAST_PERFORMER_REMOTE: last_performer,
+        product_point.LOCATION_REMOTE: location,
+        product_point.VEHICLE_NUMBER_REMOTE: vehicle_number,
+        product_point.START_DEPTH_REMOTE: start_depth,
+    }
+    return name, point_map
+
+
+def _round_depth(depth: float):
+    return round(depth, 2)
+
+
+def _make_name(feature):
+    name = str(feature.attribute(data.NAME))
+    assert type(name) is str
+    return name
+
+
+def _make_time(feature: IFeature) -> datetime.datetime:
+    time = feature.time() or datetime.datetime.utcnow()
+    assert isinstance(time, datetime.datetime)
+    return time
+
+
 def _team_map(features: List[IFeature]) -> dict:
     data_map = {}
     for feature in features:
-        time = feature.attribute(data.TIME)
-        name = feature.attribute(data.NAME)
+        time = _make_time(feature)
+        name = _make_name(feature)
         time_map = {
             data.TIME_REMOTE: time,
             data.NAME_REMOTE: name,
@@ -451,16 +537,17 @@ class Project:
         return self._gpkg_file_path
 
     def set_layers(self, **layers):
-        points_ref = data.POINTS_REMOTE
-        boreholes_ref = data.BOREHOLES_REMOTE
-        probes_ref = data.PROBES_REMOTE
-        teams_ref = data.TEAMS_REMOTE
+        points_ref = model.m_user.POINTS_REMOTE
+        boreholes_ref = model.m_user.BOREHOLES_REMOTE
+        probes_ref = model.m_user.PROBES_REMOTE
+        teams_ref = model.m_user.TEAMS_REMOTE
 
         self.layers: List[IMapLayer] = list(layers.values())
         [l.set_project(self) for l in self.layers]
 
         self.points_layer: IMapLayer = layers.get(POINTS_LAYER_STR)
         if self.points_layer:
+            self.points_layer.name = POINTS_LAYER_STR
             self.points_layer.can_make_timestamp_on_added = True
             self.points_layer.database_ref_path = points_ref
             self.points_layer.features_to_remote = _points_map
@@ -468,6 +555,7 @@ class Project:
 
         self.boreholes_layer: IMapLayer = layers.get(BOREHOLES_LAYER_STR)
         if self.boreholes_layer:
+            self.boreholes_layer.name = BOREHOLES_LAYER_STR
             self.boreholes_layer.can_make_timestamp_on_added = True
             self.boreholes_layer.database_ref_path = boreholes_ref
             self.boreholes_layer.features_to_remote = _boreholes_map
@@ -476,6 +564,7 @@ class Project:
 
         self.probes_layer: IMapLayer = layers.get(PROBES_LAYER_STR)
         if self.probes_layer:
+            self.probes_layer.name = PROBES_LAYER_STR
             self.probes_layer.can_make_timestamp_on_added = True
             self.probes_layer.database_ref_path = probes_ref
             self.probes_layer.features_to_remote = _probes_map
@@ -484,53 +573,63 @@ class Project:
 
         self.borehole_persons_layer: IMapLayer = layers.get(BOREHOLE_PERSONS_LAYER_STR)
         if self.borehole_persons_layer:
+            self.borehole_persons_layer.name = BOREHOLE_PERSONS_LAYER_STR
             self.borehole_persons_layer.database_ref_path = boreholes_ref
             self.borehole_persons_layer.features_to_remote = _persons_list_map
 
         self.shears_todo_layer: IMapLayer = layers.get(SHEARS_TODO_LAYER_STR)
         if self.shears_todo_layer:
+            self.shears_todo_layer.name = SHEARS_TODO_LAYER_STR
             self.shears_todo_layer.database_ref_path = points_ref
             self.shears_todo_layer.features_to_remote = _todo_shears_list
 
         self.layers_layer: IMapLayer = layers.get(LAYERS_LAYER_STR)
         if self.layers_layer:
+            self.layers_layer.name = LAYERS_LAYER_STR
             self.layers_layer.database_ref_path = boreholes_ref
             self.layers_layer.features_to_remote = _layers_map
 
         self.drilled_water_horizons_layer: IMapLayer = layers.get(DRILLED_WATER_LAYER_STR)
         if self.drilled_water_horizons_layer:
+            self.drilled_water_horizons_layer.name = DRILLED_WATER_LAYER_STR
             self.drilled_water_horizons_layer.database_ref_path = boreholes_ref
             self.drilled_water_horizons_layer.features_to_remote = _water_horizons_map
 
         self.set_water_horizons_layer: IMapLayer = layers.get(SET_WATER_LAYER_STR)
         if self.set_water_horizons_layer:
+            self.set_water_horizons_layer.name = SET_WATER_LAYER_STR
             self.set_water_horizons_layer.database_ref_path = boreholes_ref
             self.set_water_horizons_layer.features_to_remote = _water_horizons_map
 
         self.exudations_layer: IMapLayer = layers.get(EXUDATIONS_LAYER_STR)
         if self.exudations_layer:
+            self.exudations_layer.name = EXUDATIONS_LAYER_STR
             self.exudations_layer.database_ref_path = boreholes_ref
             self.exudations_layer.features_to_remote = _exudations_list
 
         self.probe_persons_layer: IMapLayer = layers.get(PROBE_PERSONS_LAYER_STR)
         if self.probe_persons_layer:
+            self.probe_persons_layer.name = PROBE_PERSONS_LAYER_STR
             self.probe_persons_layer.database_ref_path = probes_ref
             self.probe_persons_layer.features_to_remote = _persons_list_map
 
         self.probe_units_layer: IMapLayer = layers.get(PROBE_UNITS_LAYER_STR)
         if self.probe_units_layer:
+            self.probe_units_layer.name = PROBE_UNITS_LAYER_STR
             self.probe_units_layer.database_ref_path = probes_ref
             self.probe_units_layer.features_to_remote = _probe_units_list_map
 
         self.shear_units_layer: IMapLayer = layers.get(SHEAR_UNITS_LAYER_STR)
         if self.shear_units_layer:
+            self.shear_units_layer.name = SHEAR_UNITS_LAYER_STR
             self.shear_units_layer.database_ref_path = probes_ref
             self.shear_units_layer.features_to_remote = _shear_units_list_map
 
         self.teams_layer: IMapLayer = layers.get(TEAMS_LAYER_STR)
         if self.teams_layer:
+            self.teams_layer.name = TEAMS_LAYER_STR
             self.teams_layer.database_ref_path = teams_ref
-            self.shear_units_layer.features_to_remote = _team_map
+            self.teams_layer.features_to_remote = _team_map
 
     def reset(self):
         [layer.delete_all_features() for layer in self.layers]
