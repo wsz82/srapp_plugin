@@ -63,10 +63,14 @@ class Synchronizer:
         boreholes_ref = self.user.boreholes_ref(project.name)
         probes_ref = self.user.probes_ref(project.name)
         teams_ref = self.user.teams_ref(project.name)
+        crs_ref = self.user.crs_ref(project.name)
         try:
             if project.points_layer:
                 self._listeners.append(self._listen_points_changes(map_points_ref, project))
                 self._listen_to_layer_changes(project.points_layer)
+                wkid = project.points_layer.get_wkid()
+                if wkid:
+                    crs_ref.set({'wkid': wkid}, True)
             if project.boreholes_layer:
                 self._listeners.append(self._listen_boreholes_changes(boreholes_ref, project))
                 self._listen_to_layer_changes(project.boreholes_layer)

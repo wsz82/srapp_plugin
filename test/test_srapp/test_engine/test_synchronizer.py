@@ -95,6 +95,11 @@ class FakeTeamsReference:
         FakeTeamsReference.on_update(doc_snapshot, changes, read_time)
 
 
+class FakeCrsReference:
+    def set(self, *args, **kwargs):
+        pass
+
+
 class FakeUser(User):
 
     def __init__(self, email: str):
@@ -114,6 +119,9 @@ class FakeUser(User):
 
     def teams_ref(self, project_name) -> FakeTeamsReference:
         return FakeTeamsReference()
+
+    def crs_ref(self, project_name) -> FakeCrsReference:
+        return FakeCrsReference()
 
 
 class FakeConnectable:

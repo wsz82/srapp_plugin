@@ -265,6 +265,10 @@ class IMapLayer(Generic[LR]):
     def field_names(self):
         pass
 
+    @abc.abstractmethod
+    def get_wkid(self) -> int:
+        pass
+
 
 class ListenerLayer(IListener[Callable]):
 

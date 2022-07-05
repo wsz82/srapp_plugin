@@ -10,6 +10,8 @@ BOREHOLES_REMOTE = 'boreholes'
 PROBES_REMOTE = 'probes'
 POINTS_REMOTE = 'map_points'
 TEAMS_REMOTE = 'teams'
+PROPERTIES_REMOTE = 'properties'
+CRS_REMOTE = 'crs'
 
 
 class User:
@@ -35,3 +37,6 @@ class User:
 
     def teams_ref(self, project_name) -> CollectionReference:
         return self.project_ref(project_name).collection(TEAMS_REMOTE)
+
+    def crs_ref(self, project_name) -> DocumentReference:
+        return self.project_ref(project_name).collection(PROPERTIES_REMOTE).document(CRS_REMOTE)

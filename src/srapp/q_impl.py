@@ -85,6 +85,14 @@ class Qgis(IQgis):
 
 class MapLayer(IMapLayer[QgsVectorLayer]):
 
+    def get_wkid(self) -> int:
+        authid = self.layer.crs().authid()
+        wkid = authid.replace('EPSG:', '')
+        try:
+            return int(wkid)
+        except ValueError:
+            pass
+
     def field_names(self):
         return self.layer.fields().names()
 
