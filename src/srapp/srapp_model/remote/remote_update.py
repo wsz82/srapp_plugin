@@ -5,6 +5,7 @@ from google.cloud.firestore_v1 import CollectionReference, DocumentReference
 from google.cloud.firestore_v1.types import WriteResult
 
 from model.m_layer import IMapLayer
+from model.m_user import make_valid_id
 from srapp_model import G
 
 DATABASE_TAG = 'SRApp - baza danych'
@@ -49,7 +50,3 @@ def make_result_message(result):
         return 'powodzenie'
     else:
         return 'niepowodzenie'
-
-
-def make_valid_id(id: str) -> str:
-    return id.replace('/', '**')

@@ -23,6 +23,7 @@ class User:
         return self.client is not None
 
     def project_ref(self, project_name) -> DocumentReference:
+        project_name = make_valid_id(project_name)
         return self.client.collection(USERS_REMOTE).document(self.email).collection(VERSIONS_REMOTE) \
             .document(constants.DATABASE_VERSION).collection(PROJECTS_REMOTE).document(project_name)
 
@@ -40,3 +41,7 @@ class User:
 
     def crs_ref(self, project_name) -> DocumentReference:
         return self.project_ref(project_name).collection(PROPERTIES_REMOTE).document(CRS_REMOTE)
+
+
+def make_valid_id(id: str) -> str:
+    return id.replace('/', '**')

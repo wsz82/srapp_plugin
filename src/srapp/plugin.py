@@ -7,6 +7,7 @@ from qgis._gui import QgisInterface
 
 import q_impl
 # setup logger
+from model.m_project import file_name_to_name
 from srapp_model import G
 
 G.Log = q_impl.Logger()
@@ -137,6 +138,7 @@ class SrappPlugin:
         for file in os.listdir(projects_dir):
             if file.endswith('.gpkg'):
                 name = os.path.splitext(file)[0]
+                name = file_name_to_name(name)
                 G.Log.message(f'Skanowanie tematów - wykryto plik: "{file}"')
                 plugin_group = root.findGroup(plugin_group_name)
                 if not plugin_group:

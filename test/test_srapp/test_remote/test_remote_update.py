@@ -1,4 +1,4 @@
-from srapp_model.remote.remote_update import make_valid_id
+from model.m_user import make_valid_id
 
 
 def test_id_transformed_to_valid_id_not_changed():

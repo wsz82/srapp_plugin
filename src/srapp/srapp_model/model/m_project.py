@@ -498,11 +498,19 @@ def _team_map(features: List[IFeature]) -> dict:
     return data_map
 
 
+def name_to_file_name(name: str) -> str:
+    return name.replace("/", "__")
+
+
+def file_name_to_name(name: str) -> str:
+    return name.replace("__", "/")
+
+
 class Project:
     def __init__(self, name: str, projects_dir: str, **layers):
         self._name: str = name
         self._dir: str = projects_dir
-        self._gpkg_file_path: str = os.path.join(self.dir, f'{name}.gpkg')
+        self._gpkg_file_path: str = os.path.join(self.dir, f'{name_to_file_name(name)}.gpkg')
         self.set_layers(**layers)
         self._layers_names = [
             POINTS_LAYER_STR,
