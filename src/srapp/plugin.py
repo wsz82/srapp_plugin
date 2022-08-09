@@ -1,6 +1,7 @@
 import os
 from typing import *
 
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction
 from qgis._core import QgsProject
 from qgis._gui import QgisInterface
@@ -54,15 +55,23 @@ class SrappPlugin:
         self.add_project_action = None
 
     def initGui(self):
-        self.sync_action = QAction('Synchronizacja', self.iface.mainWindow())
+        synchronize_icon = QIcon(self.make_icon_path('synchronize.png'))
+        self.sync_action = QAction(synchronize_icon, 'Synchronizacja', self.iface.mainWindow())
         self.sync_action.setCheckable(True)
         self.sync_action.triggered.connect(self.run_sync)
         self.sync_action.changed.connect(self.resolve_push_actions_visibility)
         self.iface.addToolBarIcon(self.sync_action)
 
-        self.add_project_action = QAction('Temat', self.iface.mainWindow())
+        project_icon = QIcon(self.make_icon_path('project.png'))
+        self.add_project_action = QAction(project_icon, 'Temat', self.iface.mainWindow())
         self.add_project_action.triggered.connect(self.run_add_project)
         self.iface.addToolBarIcon(self.add_project_action)
+
+    def make_icon_path(self, name):
+        path = os.path.dirname(os.path.abspath(__file__))
+        rel_path = 'resources\\icons'
+        icon_path = os.path.join(path, rel_path, name)
+        return icon_path
 
     def resolve_push_actions_visibility(self):
         is_sync = self.sync_action.isChecked()
