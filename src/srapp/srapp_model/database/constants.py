@@ -3,6 +3,7 @@ from typing import *
 from model import LocalToRemote
 
 DATABASE_VERSION = 'V1'
+DEFAULT_PROJECT = 'projekt_testowy'
 
 SHEARS_SIZE: int = 18
 DEFAULT_PROBE_INTERVAL: float = 0.1

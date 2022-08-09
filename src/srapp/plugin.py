@@ -7,6 +7,7 @@ from qgis._gui import QgisInterface
 
 import q_impl
 # setup logger
+from srapp_model.database import constants
 from model.m_project import file_name_to_name
 from srapp_model import G
 
@@ -91,7 +92,7 @@ class SrappPlugin:
         title = "Wpisz nazwę tematu"
         label = "Temat: "
         mode = QLineEdit.Normal
-        default = "test"
+        default = constants.DEFAULT_PROJECT
         text, ok = QInputDialog.getText(qid, title, label, mode, default)
         if ok:
             project_name = text
