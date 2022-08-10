@@ -9,7 +9,7 @@ WATER_DEPTH_REMOTE = 'depth'
 WATER_DEPTH = 'gl_zwier'
 
 HORIZON = 'warstwa'
-TIME_REMOTE = 'time'
+TIME_REMOTE = 'timestamp'
 TIME_PERIOD_MIN = 'okres_min'
 
 DRILLED_WATER_LOCAL_TO_REMOTE: LocalToRemote[str, str] = LocalToRemote([
@@ -77,11 +77,12 @@ class SetWaterHorizon(Data):
             hours = measurement_period.get('hours', 0)
             minutes = measurement_period.get('minutes', 0)
             all_minutes = days * 24 * 60 + hours * 60 + minutes
+        local = Data.remote_time_to_local(doc_map.get(TIME_REMOTE))
         return SetWaterHorizon(
             point_name,
             doc_map.get(REMOTE_DATA),
             float(doc_map.get(WATER_DEPTH_REMOTE)),
-            Data.remote_time_to_local(doc_map.get(TIME_REMOTE)),
+            local,
             all_minutes,
         )
 

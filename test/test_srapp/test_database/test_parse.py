@@ -339,7 +339,7 @@ class TestParse:
     def test_remote_datetime_is_parsed_to_seconds_precision(self):
         remote = DatetimeWithNanoseconds(2022, 4, 10, 16, 42, 56, 86000, tzinfo=datetime.timezone.utc)
         parsed = Data.remote_time_to_local(remote)
-        expected = str(datetime.datetime(2022, 4, 10, 16, 42, 56))
+        expected = str(datetime.datetime(2022, 4, 10, 18, 42, 56, tzinfo=datetime.timezone(datetime.timedelta(hours=2))))
         assert parsed == expected
 
     @pytest.mark.parametrize(

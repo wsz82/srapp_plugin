@@ -38,8 +38,10 @@ def on_subitems_modify(project_ref: DocumentReference, names: Set[str], layer: I
     for name in names:
         item_ref: DocumentReference = items_ref.document(make_valid_id(name))
         features = layer.features_by_name(name)
-        assert features
-        data_map = layer.features_to_remote(features)
+        if features:
+            data_map = layer.features_to_remote(features)
+        else:
+            data_map = dict()
         result: WriteResult = item_ref.set(data_map, True)
         result_message = make_result_message(result)
         G.Log.message(f'{layer.name}: zmieniono "{name}" - {result_message}', DATABASE_TAG)

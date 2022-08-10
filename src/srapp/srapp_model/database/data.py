@@ -115,7 +115,9 @@ class Data:
     def remote_time_to_local(r: DatetimeWithNanoseconds) -> str:
         if not r:
             return ''
-        return str(datetime.datetime(r.year, r.month, r.day, r.hour, r.minute, r.second))
+        r = r.replace(tzinfo=datetime.timezone.utc).astimezone(tz=None)
+        r = r.replace(microsecond=0)
+        return str(r)
 
 
 @dataclasses.dataclass(frozen=True)
