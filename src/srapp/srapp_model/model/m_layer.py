@@ -137,8 +137,10 @@ class IMapLayer(Generic[LR]):
         )
         for feat, item in feat_and_item:
             if feat and item:
-                attr_map = item.attr_map(feat.fid())
+                fid = feat.fid()
+                attr_map = item.attr_map(fid)
                 self.change_attribute_values(attr_map)
+                self.change_geometry_values(fid, item)
             elif feat:
                 self._delete_features(feat.fid())
             elif item:
@@ -176,6 +178,9 @@ class IMapLayer(Generic[LR]):
 
     @abc.abstractmethod
     def change_attribute_values(self, attr_map: Dict[int, Dict[int, Any]]):
+        pass
+
+    def change_geometry_values(self, feat_id: int, item: Data):
         pass
 
     @abc.abstractmethod

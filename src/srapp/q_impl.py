@@ -7,7 +7,7 @@ from qgis._core import QgsFeature, QgsGeometry, QgsPointXY, QgsSpatialIndex, Qgs
     QgsExpression, QgsFeatureRequest
 
 import logger
-from database.data import IPointFeature
+from database.data import IPointFeature, PointData
 from model.m_layer import IMapLayer
 from srapp_model.database import data
 from srapp_model.database.data import FTR
@@ -163,3 +163,11 @@ class PointsMapLayer(MapLayer):
 
     def wrap_raw_feature(self, feature: FTR):
         return PointFeature(feature)
+
+    def change_geometry_values(self, feat_id: int, item: PointData):
+        x = item.x
+        y = item.y
+        if not (x and y):
+            return
+        geom = QgsGeometry.fromPointXY(QgsPointXY(x, y))
+        self.layer.dataProvider().changeGeometryValues({feat_id: geom})

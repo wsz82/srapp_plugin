@@ -253,17 +253,17 @@ class TestParse:
             "drilledWaterHorizons": [
                 {
                     "depth": "0.8",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "data": "II"
                 },
                 {
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "depth": "2.21",
                     "data": "III"
                 },
                 {
                     "data": "I",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "depth": "0.4"
                 }
             ],
@@ -276,7 +276,7 @@ class TestParse:
                         "minutes": 0
                     },
                     "data": "II",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "depth": "1.30"
                 },
                 {
@@ -288,18 +288,18 @@ class TestParse:
                         "minutes": 0
                     },
                     "depth": "0.40",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                 }
             ],
             "exudations": [
                 {
                     "depth": "0.5",
                     "data": "1",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                 },
                 {
                     "depth": "0.2",
-                    "time": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
+                    "timestamp": DatetimeWithNanoseconds(2022, 3, 26, 18, 27, 26, 314000, tzinfo=datetime.timezone.utc),
                     "data": "2"
                 }
             ]
