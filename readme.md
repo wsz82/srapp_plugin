@@ -14,7 +14,7 @@ Copy "srapp" folder into your QGIS plugins directory and turn on plugin in QGIS 
 
 ## Usage
 
-todo
+Use the plugin together with Metryka mobile app. Create a project and synchronize it with the database.
 
 ## License
 

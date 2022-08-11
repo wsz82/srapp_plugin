@@ -47,6 +47,10 @@ def _try_login() -> User:
     return _user
 
 
+SYNC_TEXT = 'Synchronizacja'
+PROJECT_TEXT = 'Temat'
+
+
 class SrappPlugin:
 
     def __init__(self, iface: QgisInterface):
@@ -56,16 +60,22 @@ class SrappPlugin:
 
     def initGui(self):
         synchronize_icon = QIcon(self.make_icon_path('synchronize.png'))
-        self.sync_action = QAction(synchronize_icon, 'Synchronizacja', self.iface.mainWindow())
+        self.sync_action = QAction(synchronize_icon, SYNC_TEXT, self.iface.mainWindow())
         self.sync_action.setCheckable(True)
         self.sync_action.triggered.connect(self.run_sync)
         self.sync_action.changed.connect(self.resolve_push_actions_visibility)
         self.iface.addToolBarIcon(self.sync_action)
 
         project_icon = QIcon(self.make_icon_path('project.png'))
-        self.add_project_action = QAction(project_icon, 'Temat', self.iface.mainWindow())
+        self.add_project_action = QAction(project_icon, PROJECT_TEXT, self.iface.mainWindow())
         self.add_project_action.triggered.connect(self.run_add_project)
         self.iface.addToolBarIcon(self.add_project_action)
+
+    def unload(self):
+        self.iface.removeToolBarIcon(self.sync_action)
+        del self.sync_action
+        self.iface.removeToolBarIcon(self.add_project_action)
+        del self.add_project_action
 
     def make_icon_path(self, name):
         path = os.path.dirname(os.path.abspath(__file__))
@@ -90,11 +100,6 @@ class SrappPlugin:
                 self.sync_action.setChecked(False)
         else:
             _sync_instance.desynchronize()
-
-    def unload(self):
-        self.iface.removeToolBarIcon(self.sync_action)
-        del self.sync_action
-        self.iface.removeToolBarIcon(self.add_project_action)
 
     def run_add_project(self):
         qid = QInputDialog()
