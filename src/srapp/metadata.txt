@@ -1,7 +1,7 @@
 [general]
 name=SRApp
 description=Synchronizacja z bazą danych aplikacji Metryka
-about=Twórz nowe projekty dla użytkowników aplikacji mobilnej Metryka, ładuj dane oraz śledz zmiany w projektach
+about=Twórz nowe projekty dla użytkowników aplikacji mobilnej Metryka, ładuj dane oraz śledz zmiany w projektach. Wtyczka wymaga do działania biblioteki firebase_admin, która jest pobierana przy włączeniu wtyczki
 version=1.0
 qgisMinimumVersion=3.0
 author=Wojciech Szpikowski
