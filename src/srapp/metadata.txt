@@ -11,3 +11,4 @@ tracker=https://github.com/wsz82/srapp_plugin/issues
 category=Database
 homepage=https://sites.google.com/view/metrykaapp/home
 icon=icon.png
+experimental=True

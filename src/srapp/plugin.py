@@ -1,6 +1,8 @@
 import os
+import webbrowser
 from typing import *
 
+import qgis.utils
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction
 from qgis._core import QgsProject
@@ -47,8 +49,9 @@ def _try_login() -> User:
     return _user
 
 
-SYNC_TEXT = 'Synchronizacja'
-PROJECT_TEXT = 'Temat'
+SYNC_TEXT = 'SRApp - Synchronizacja'
+PROJECT_TEXT = 'SRApp - Temat'
+HELP_TEXT = 'SRApp - Pomoc'
 
 
 class SrappPlugin:
@@ -65,17 +68,25 @@ class SrappPlugin:
         self.sync_action.triggered.connect(self.run_sync)
         self.sync_action.changed.connect(self.resolve_push_actions_visibility)
         self.iface.addToolBarIcon(self.sync_action)
+        self.iface.addicon(self.sync_action)
 
         project_icon = QIcon(self.make_icon_path('project.png'))
         self.add_project_action = QAction(project_icon, PROJECT_TEXT, self.iface.mainWindow())
         self.add_project_action.triggered.connect(self.run_add_project)
         self.iface.addToolBarIcon(self.add_project_action)
 
+        help_icon = QIcon(self.make_icon_path('help.png'))
+        self.help_action = QAction(help_icon, HELP_TEXT, self.iface.mainWindow())
+        self.help_action.triggered.connect(self.show_help)
+        self.iface.addToolBarIcon(self.help_action)
+
     def unload(self):
         self.iface.removeToolBarIcon(self.sync_action)
         del self.sync_action
         self.iface.removeToolBarIcon(self.add_project_action)
         del self.add_project_action
+        self.iface.removeToolBarIcon(self.help_action)
+        del self.help_action
 
     def make_icon_path(self, name):
         path = os.path.dirname(os.path.abspath(__file__))
@@ -86,6 +97,11 @@ class SrappPlugin:
     def resolve_push_actions_visibility(self):
         is_sync = self.sync_action.isChecked()
         self.add_project_action.setDisabled(is_sync)
+
+    def show_help(self):
+        path = os.path.dirname(os.path.abspath(__file__))
+        filename = "index.html"
+        webbrowser.open('file://' + os.path.join(path, filename))
 
     def run_sync(self, is_pushed):
         global _sync_instance
