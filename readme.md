@@ -18,4 +18,4 @@ Use the plugin together with Metryka mobile app. Create a project and synchroniz
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
