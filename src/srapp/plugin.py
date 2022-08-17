@@ -4,7 +4,7 @@ from typing import *
 
 import qgis.utils
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction
+from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction, QToolButton, QMenu
 from qgis._core import QgsProject
 from qgis._gui import QgisInterface
 
@@ -49,9 +49,9 @@ def _try_login() -> User:
     return _user
 
 
-SYNC_TEXT = 'SRApp - Synchronizacja'
-PROJECT_TEXT = 'SRApp - Temat'
-HELP_TEXT = 'SRApp - Pomoc'
+SYNC_TEXT = 'Synchronizacja'
+PROJECT_TEXT = 'Temat'
+HELP_TEXT = 'Pomoc'
 
 
 class SrappPlugin:
@@ -62,31 +62,33 @@ class SrappPlugin:
         self.add_project_action = None
 
     def initGui(self):
+        self.tool_button = QToolButton()
+        self.tool_button.setMenu(QMenu())
+        self.tool_button.setPopupMode(QToolButton.MenuButtonPopup)
+        self.toolBtnAction = self.iface.addToolBarWidget(self.tool_button)
+
+        m = self.tool_button.menu()
+
         synchronize_icon = QIcon(self.make_icon_path('synchronize.png'))
         self.sync_action = QAction(synchronize_icon, SYNC_TEXT, self.iface.mainWindow())
         self.sync_action.setCheckable(True)
         self.sync_action.triggered.connect(self.run_sync)
         self.sync_action.changed.connect(self.resolve_push_actions_visibility)
-        self.iface.addToolBarIcon(self.sync_action)
-        self.iface.addicon(self.sync_action)
+        m.addAction(self.sync_action)
+        self.tool_button.setDefaultAction(self.sync_action)
 
         project_icon = QIcon(self.make_icon_path('project.png'))
         self.add_project_action = QAction(project_icon, PROJECT_TEXT, self.iface.mainWindow())
         self.add_project_action.triggered.connect(self.run_add_project)
-        self.iface.addToolBarIcon(self.add_project_action)
+        m.addAction(self.add_project_action)
 
         help_icon = QIcon(self.make_icon_path('help.png'))
         self.help_action = QAction(help_icon, HELP_TEXT, self.iface.mainWindow())
         self.help_action.triggered.connect(self.show_help)
-        self.iface.addToolBarIcon(self.help_action)
+        m.addAction(self.help_action)
 
     def unload(self):
-        self.iface.removeToolBarIcon(self.sync_action)
-        del self.sync_action
-        self.iface.removeToolBarIcon(self.add_project_action)
-        del self.add_project_action
-        self.iface.removeToolBarIcon(self.help_action)
-        del self.help_action
+        self.iface.removeToolBarIcon(self.toolBtnAction)
 
     def make_icon_path(self, name):
         path = os.path.dirname(os.path.abspath(__file__))
