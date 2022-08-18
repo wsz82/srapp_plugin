@@ -9,6 +9,6 @@ email=aplikacjametryka@gmail.com
 repository=https://github.com/wsz82/srapp_plugin
 tracker=https://github.com/wsz82/srapp_plugin/issues
 category=Database
-homepage=https://sites.google.com/view/metrykaapp/home
+homepage=https://github.com/wsz82/srapp_plugin
 icon=icon.png
 experimental=True
