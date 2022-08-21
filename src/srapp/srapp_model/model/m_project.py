@@ -363,8 +363,8 @@ def _points_map(features: List[IPointFeature]) -> dict:
         probe_depth: str = str(_round_depth(float(feature.attribute(point.PROBE_DEPTH) or 0)))
         assert type(probe_depth) is str
         name = _make_name(feature)
-        height: float = _round_depth(float(feature.attribute(point.HEIGHT) or 0))
-        assert type(height) is float
+        height: str = str(_round_depth(float(feature.attribute(point.HEIGHT) or 0)))
+        assert type(height) is str
         stakeout: bool = feature.attribute(point.STAKEOUT) or False
         assert type(stakeout) is bool
         creator: str = feature.attribute(point.CREATOR) or ''
@@ -494,6 +494,7 @@ def _team_map(features: List[IFeature]) -> dict:
             data.TIME_REMOTE: time,
             data.NAME_REMOTE: name,
         }
+        # todo name key should be email, but it's not kept in feature
         data_map.update({name: time_map})
     return data_map
 
