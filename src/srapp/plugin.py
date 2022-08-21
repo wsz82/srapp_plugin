@@ -158,7 +158,10 @@ class SrappPlugin:
 
     def make_projects_dir(self) -> str:
         home_dir = os.path.expanduser('~')
-        return os.path.join(home_dir, 'srapp', 'tematy')
+        projects_dir = os.path.join(home_dir, 'srapp', 'tematy')
+        if not os.path.isdir(projects_dir):
+            os.makedirs(projects_dir)
+        return projects_dir
 
     def _scan_for_projects(self) -> List[Project]:
         plugin_group_name = 'srapp'
