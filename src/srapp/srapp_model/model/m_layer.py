@@ -92,7 +92,7 @@ class IMapLayer(Generic[LR]):
                     for feat in features:
                         attributes = feat.attributes()
                         attr = attributes[idx]
-                        if attr not in statuses:
+                        if attr and attr not in statuses:
                             messages_container.append(
                                 f'Stan wykonania "{attr}" w polu "{field_names[idx]}" w wierszu numer {feat.fid()} nie mieści się w zakresie {statuses}')
                 elif constraint == FieldConstraint.SHEARS_NUMBER:
