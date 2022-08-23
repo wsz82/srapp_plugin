@@ -2,7 +2,6 @@ import os
 import webbrowser
 from typing import *
 
-import qgis.utils
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QInputDialog, QLineEdit, QMessageBox, QAction, QToolButton, QMenu
 from qgis._core import QgsProject
@@ -138,7 +137,7 @@ class SrappPlugin:
     def _create_project(self, project_name):
         G.Log.message(f'Tworzy temat "{project_name}"')
 
-        projects_dir = self.make_projects_dir()
+        projects_dir = self._make_projects_dir()
         new_project = Project(project_name, projects_dir)
         if os.path.isfile(new_project.gpkg_file_path):
             qm = QMessageBox
@@ -156,7 +155,7 @@ class SrappPlugin:
             return
         G.Log.message(f'Utworzono temat "{project_name}"')
 
-    def make_projects_dir(self) -> str:
+    def _make_projects_dir(self) -> str:
         home_dir = os.path.expanduser('~')
         projects_dir = os.path.join(home_dir, 'srapp', 'tematy')
         if not os.path.isdir(projects_dir):
@@ -165,7 +164,7 @@ class SrappPlugin:
 
     def _scan_for_projects(self) -> List[Project]:
         plugin_group_name = 'srapp'
-        projects_dir = self.make_projects_dir()
+        projects_dir = self._make_projects_dir()
         projects = []
 
         qgs = QgsProject.instance()

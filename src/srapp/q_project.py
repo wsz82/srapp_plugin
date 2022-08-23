@@ -66,8 +66,6 @@ def _create_layers(project: Project):
 def _create_layer(project: Project, geometry: str, layer_name: str, fields: []):
     layer_options = QgsVectorLayer.LayerOptions()
     layer = QgsVectorLayer(geometry, layer_name, 'memory', layer_options)
-    # if layer_name == m_project.POINTS_LAYER_STR:
-    #     layer.setFieldConstraint(2, QgsFieldConstraints.Constraint.ConstraintNotNull)
     if not layer.isValid():
         QgsMessageLog.logMessage(f'Nieprawidłowa warstwa {layer_name}', 'SRApp')
         return
@@ -138,7 +136,7 @@ def _set_layer_style(qgis_layer: QgsVectorLayer, field_name: str, font_size: int
     text_format.setBuffer(buffer_settings)
     layer_settings.setFormat(text_format)
     layer_settings.fieldName = field_name
-    layer_settings.placement = 2
+    layer_settings.placement = QgsPalLayerSettings.Placement.Line
     layer_settings.enabled = True
     layer_settings = QgsVectorLayerSimpleLabeling(layer_settings)
     qgis_layer.setLabelsEnabled(True)
