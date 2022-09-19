@@ -15,6 +15,12 @@ from srapp_model import G
 
 G.Log = q_impl.Logger()
 
+try:
+    import firebase_admin
+except:
+    G.Log.information('Automatyczna instalacja biblioteki firebase_admin się nie powiodła. Zainstaluj ją ręcznie za pomocą konsoli OSGeo4W Shell przy użyciu komendy "pip install firebase_admin".', 'Niepowodzenie')
+    raise ImportError('Brak biblioteki firebase_admin')
+
 import q_auth as auth
 from engine import synchronize
 from engine.synchronize import Synchronizer
@@ -188,7 +194,10 @@ class SrappPlugin:
                 name_to_index = {l.name(): layers.index(l) for l in layers}
 
                 def get_layer(layer_name: str):
-                    return layers[name_to_index.get(layer_name)].layer()
+                    try:
+                        return layers[name_to_index.get(layer_name)].layer()
+                    except TypeError:
+                        pass
 
                 q_project.set_project_layers(get_layer, project, IQgis(qgs))
 

@@ -1,4 +1,5 @@
 import abc
+import threading
 import traceback
 from typing import *
 
@@ -30,6 +31,9 @@ class ListenerWatch(IListener[Watch]):
         self.obj.unsubscribe()
 
 
+local_database_lock = threading.Lock()
+
+
 class Synchronizer:
     def __init__(self, qgis: IQgis, user: User, projects: List[Project]):
         self.qgis: IQgis = qgis
@@ -42,7 +46,7 @@ class Synchronizer:
 
     def synchronize(self):
         for project in self.projects:
-            # todo not reseting means leaving the data that not exists in remote
+            # todo not resetting means leaving the data that not exists in remote
             # project.reset()
             for layer in project.layers:
                 features = layer.all_features()
@@ -52,8 +56,9 @@ class Synchronizer:
     def desynchronize(self):
         for p in self.projects:
             for layer in p.layers:
-                layer.stop_edit_mode()
-                layer.set_editable(False)
+                if layer:
+                    layer.stop_edit_mode()
+                    layer.set_editable(False)
         for listener in self._listeners:
             listener.stop()
         self._listeners.clear()
@@ -108,41 +113,53 @@ class Synchronizer:
         self._listeners.append(layer.committed_features_removed(self._on_subitems_deleted))
         self._listeners.append(layer.committed_attribute_values_changes(self._on_subitems_changed))
 
-    def project_layer_ref(self, layer: IMapLayer):
+    def project_ref(self, layer: IMapLayer):
         project: Project = layer.project
         project_ref = self.user.project_ref(project.name)
         return project, project_ref
 
     def _on_items_added(self, layer: IMapLayer, features: Iterable[IFeature]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         layer.fid_to_name.update({f.fid(): f.name() for f in features})
         names = {f.name() for f in features}
         remote_update.on_items_modify(project_ref, names, layer)
 
     def _on_items_deleted(self, layer: IMapLayer, deleted_features_fids: List[int]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         collection_ref = project_ref.collection(layer.database_ref_path)
         names = {layer.fid_to_name.get(fid) for fid in deleted_features_fids}
         remote_update.on_items_deleted(collection_ref, names, layer.name)
 
     def _on_items_changed(self, layer: IMapLayer, features: List[IFeature]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         names = {f.name() for f in features}
         remote_update.on_items_modify(project_ref, names, layer)
 
     def _on_subitems_added(self, layer: IMapLayer, features: List[IFeature]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         names = {feat.name() for feat in features}
         layer.fid_to_name.update({f.fid(): f.name() for f in features})
         remote_update.on_subitems_modify(project_ref, names, layer)
 
     def _on_subitems_deleted(self, layer: IMapLayer, deleted_features_fids: List[int]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         names = {layer.fid_to_name.get(fid) for fid in deleted_features_fids}
         remote_update.on_subitems_modify(project_ref, names, layer)
 
     def _on_subitems_changed(self, layer: IMapLayer, features: List[IFeature]):
-        project, project_ref = self.project_layer_ref(layer)
+        if not layer:
+            pass
+        project, project_ref = self.project_ref(layer)
         names = {f.name() for f in features}
         remote_update.on_subitems_modify(project_ref, names, layer)
 
@@ -158,14 +175,18 @@ class Synchronizer:
             point_name = point.fields.get(data.NAME)
 
             if change_type == ChangeType.REMOVED:
-                points_layer.delete_features_by_name(point_name)
-                shears_layer.delete_features_by_name(point_name)
+                if points_layer:
+                    points_layer.delete_features_by_name(point_name)
+                if shears_layer:
+                    shears_layer.delete_features_by_name(point_name)
             elif change_type == ChangeType.ADDED or change_type == ChangeType.MODIFIED:
-                points_layer.add_feature(point, point_name)
-                shears_layer.add_features(shears, point_name)
+                if points_layer:
+                    points_layer.add_feature(point, point_name)
+                if shears_layer:
+                    shears_layer.add_features(shears, point_name)
 
         def on_map_points_snapshot(doc_snapshot, changes, read_time):
-            _on_iteration(points_layer, 'punkty', on_map_points, changes)
+            self._on_iteration(points_layer, 'punkty', on_map_points, changes)
             points_layer.refresh()
 
         return ListenerWatch(map_points_ref.on_snapshot(on_map_points_snapshot))
@@ -193,14 +214,16 @@ class Synchronizer:
             if change_type == ChangeType.REMOVED:
                 boreholes_layer.delete_features_by_name(point_name)
                 for add in additional:
-                    add[0].delete_features_by_name(point_name)
+                    if add[0]:
+                        add[0].delete_features_by_name(point_name)
             elif change_type == ChangeType.ADDED or change_type == ChangeType.MODIFIED:
                 boreholes_layer.add_feature(bp, point_name)
                 for add in additional:
-                    add[0].add_features(add[1], point_name)
+                    if add[0]:
+                        add[0].add_features(add[1], point_name)
 
         def on_boreholes_snapshot(doc_snapshot, changes, read_time):
-            return _on_iteration(boreholes_layer, 'wiercenia', on_boreholes, changes)
+            return self._on_iteration(boreholes_layer, 'wiercenia', on_boreholes, changes)
 
         return ListenerWatch(boreholes_ref.on_snapshot(on_boreholes_snapshot))
 
@@ -217,57 +240,71 @@ class Synchronizer:
             point_name = pp.name
 
             if change_type == ChangeType.REMOVED:
-                probes_layer.delete_features_by_name(point_name)
-                probe_units_layer.delete_features_by_name(point_name)
-                shears_layer.delete_features_by_name(point_name)
-                persons_layer.delete_features_by_name(point_name)
+                if probes_layer:
+                    probes_layer.delete_features_by_name(point_name)
+                if probe_units_layer:
+                    probe_units_layer.delete_features_by_name(point_name)
+                if shears_layer:
+                    shears_layer.delete_features_by_name(point_name)
+                if persons_layer:
+                    persons_layer.delete_features_by_name(point_name)
             elif change_type == ChangeType.ADDED or change_type == ChangeType.MODIFIED:
-                probes_layer.add_feature(pp, point_name)
-                probe_units_layer.add_features(pp.probe.units, point_name)
-                shears_layer.add_features(shears, point_name)
-                persons_layer.add_features(persons, point_name)
+                if probes_layer:
+                    probes_layer.add_feature(pp, point_name)
+                if probe_units_layer:
+                    probe_units_layer.add_features(pp.probe.units, point_name)
+                if shears_layer:
+                    shears_layer.add_features(shears, point_name)
+                if persons_layer:
+                    persons_layer.add_features(persons, point_name)
 
         def on_probes_snapshot(doc_snapshot, changes, read_time):
-            return _on_iteration(probes_layer, 'sondowania', on_probes, changes)
+            return self._on_iteration(probes_layer, 'sondowania', on_probes, changes)
 
         return ListenerWatch(probes_ref.on_snapshot(on_probes_snapshot))
 
     def _listen_team_changes(self, teams_ref, p: Project) -> ListenerWatch:
         def on_teams_snapshot(doc_snapshots: List[DocumentSnapshot], changes, read_time):
-            try:
+            with local_database_lock:
                 teams_layer = p.teams_layer
-                for doc_snapshot in doc_snapshots:
-                    team_doc = doc_snapshot.to_dict()
-                    team: TeamPoint = TeamPoint.from_dict(team_doc)
-                    teams_layer.add_feature(team, team.name)
-                teams_layer.refresh()
+                if not teams_layer:
+                    pass
+                try:
+                    for doc_snapshot in doc_snapshots:
+                        team_doc = doc_snapshot.to_dict()
+                        team: TeamPoint = TeamPoint.from_dict(team_doc)
+                        teams_layer.add_feature(team, team.name)
+                    teams_layer.refresh()
+                except Exception as e:
+                    G.Log.error(f'{traceback.format_exc()}')
+                    raise e
+
+        return ListenerWatch(teams_ref.on_snapshot(on_teams_snapshot))
+
+    def _on_iteration(self, basic_layer: IMapLayer, tag: str, func: callable, changes):
+        with local_database_lock:
+            if not basic_layer:
+                pass
+            try:
+                for change in changes:
+                    change_type = change.type
+                    doc: DocumentSnapshot = change.document
+                    doc_map = doc.to_dict()
+                    name = doc_map.get(data.NAME_REMOTE)
+                    if not name:
+                        continue
+                    feat = basic_layer.feature_by_name(name)
+                    if feat:
+                        local_time = str(feat.time())
+                        raw_remote_time = doc_map.get(data.TIME_REMOTE)
+                        remote_time = str(Data.remote_time_to_local(raw_remote_time))
+                        if local_time == remote_time:
+                            continue
+
+                    func(change_type, doc_map)
+
+                    G.Log.message(f'{change_type} {doc.id}', f'SRApp - {tag}')
             except Exception as e:
                 G.Log.error(f'{traceback.format_exc()}')
                 raise e
 
-        return ListenerWatch(teams_ref.on_snapshot(on_teams_snapshot))
-
-
-def _on_iteration(basic_layer: IMapLayer, tag: str, func: callable, changes):
-    try:
-        for change in changes:
-            change_type = change.type
-            doc: DocumentSnapshot = change.document
-            doc_map = doc.to_dict()
-            name = doc_map.get(data.NAME_REMOTE)
-            if not name:
-                continue
-            feat = basic_layer.feature_by_name(name)
-            if feat:
-                local_time = str(feat.time())
-                raw_remote_time = doc_map.get(data.TIME_REMOTE)
-                remote_time = str(Data.remote_time_to_local(raw_remote_time))
-                if local_time == remote_time:
-                    continue
-
-            func(change_type, doc_map)
-
-            G.Log.message(f'{change_type} {doc.id}', f'SRApp - {tag}')
-    except Exception as e:
-        G.Log.error(f'{traceback.format_exc()}')
-        raise e

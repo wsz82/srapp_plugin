@@ -13,16 +13,26 @@ sys.path.append(srapp_path)
 srapp_model_path = os.path.join(srapp_path, 'srapp_model')
 sys.path.append(srapp_model_path)
 
+
+def find_python():
+    if sys.platform != "win32":
+        return sys.executable
+
+    for path in sys.path:
+        assumed_path = os.path.join(path, "python.exe")
+        if os.path.isfile(assumed_path):
+            return assumed_path
+
+    return None
+
+
 try:
     import firebase_admin
 except:
-    py_path = sys.executable
-    # Windows QGiS specific
-    if 'qgis-bin.exe' in py_path:
-        osgeo4w_path = os.path.dirname(os.path.dirname(py_path))
-        py_path = os.path.join(osgeo4w_path, 'apps', 'Python39', 'python.exe')
+    py_path = find_python()
     # install firebase_admin
-    subprocess.check_call([py_path, "-m", "pip", "install", "firebase_admin"])
+    if py_path:
+        subprocess.check_call([py_path, "-m", "pip", "install", "firebase_admin"])
 
 from srapp.plugin import SrappPlugin
 

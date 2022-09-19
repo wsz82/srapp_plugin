@@ -677,7 +677,7 @@ class TestParse:
             'boreholeStatus': 'EMPTY',
             'heightSystem': 'PL-KRON86-NH',
             'assignedPerformer': 'wojtek',
-            'height': 86.7,
+            'height': '86.7',
             'owner': 'Józef',
             'pointNumber': 'D1',
             'probeDesignedDepth': '3.5',

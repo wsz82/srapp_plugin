@@ -106,6 +106,8 @@ def set_project_layers(layer_supplier: Callable[[str], QgsVectorLayer], project:
     map_layers: OrderedDict[str, IMapLayer] = OrderedDict()
     for layer_name in project.layers_names:
         qgis_layer: QgsVectorLayer = layer_supplier(layer_name)
+        if not qgis_layer:
+            continue
         constructor: callable
         if layer_name == model.m_config.POINTS_LAYER_STR or layer_name == model.m_config.TEAMS_LAYER_STR:
             constructor = PointsMapLayer
