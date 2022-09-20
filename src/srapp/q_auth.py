@@ -31,7 +31,7 @@ def login() -> User:
 
 def _create_database_client(username: str, password: str) -> Client:
     response = _sign_in_with_email_and_password(PUBLIC_API_KEY, username, password)
-    creds = Credentials(response['idToken'], response['refreshToken'])
+    creds = Credentials(response['idToken'], response['refreshToken'], enable_reauth_refresh=True)
     return Client(DATABASE_NAME, creds)
 
 
